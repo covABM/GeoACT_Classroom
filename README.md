@@ -1,8 +1,10 @@
-OneRoomABM: A scale model for simulating transmission for an Agent-Based modeling system.
-By scaling down the parameters to a single room of students, effects of elements such as distance and ventilation can be seen more easily. This also provides a testing environment that has a significantly faster runtime and has been useful in verifying our math for transmission both through droplets and aerosols
+GeoACT
+
+Repo for classroom modeling and visualization
 
 Installation instructions:
 ---
+## OUT OF DATE!! TODO
 
 clone repository (use git bash or Github Desktop)
 ensure package installations
