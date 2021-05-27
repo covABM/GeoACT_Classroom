@@ -40,12 +40,23 @@ def main(targets):
     num_sims_ = 100 # default
     mask_eff_ = .1 # default
     seating_ = args.seating_type
-    air_exchange_rate = 20 # default for a class
+    air_exchange_rate = aerosol_data['air_exchange_rate']
+
+    if windows == 'closed':
+        air_exchange_rate = 2 # TESTING for windows closed
+    elif windows== 'mechanical':
+        air_exchange_rate = 4
+    elif windows=='open':
+        air_exchange_rate= 5
+    elif windows=='outdoors':
+        air_exchange_rate = 20
+    else:
+        air_exchange_rate = 6
 
     class_type_arg = '-l' #length of class
     trip_duration_arg = '-t'
     seating_chart_type_arg = '-s'
-    num_students_on_class = '-n'
+    num_students_in_class = '-n'
     mask_wearing_arg = '-m' # likelihood
     windows_arg = '-w'
 
@@ -60,7 +71,7 @@ def main(targets):
         # and/or create a new file w/ their parameter selection
 
     # update aerosol to results
-    aerosol_data["floor_area"] = floor_area
+    aerosol_data["room_type"] = room_type
     aerosol_data["mask_passage_prob"] = mask_eff_
     aerosol_data["mean_ceiling_height"] = 6.07
     aerosol_data["air_exchange_rate"] = air_exchange_rate
@@ -100,8 +111,8 @@ def main(targets):
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-l', '--class_type', required=True)
-    parser.add_argument('-t', '--trip_duration', required=True)
+    parser.add_argument('-r', '--room_type', required=True)
+    parser.add_argument('-c', '--class_duration', required=True)
     parser.add_argument('-s', '--seating_type', required=True)
     parser.add_argument('-n', '--num_students', required=True)
     parser.add_argument('-m', '--mask_wearing', required=True)
