@@ -31,10 +31,57 @@ def load_parameters(filepath):
 class_flow_pos = load_parameters('config/f_seating_full.json')
 class_edge_pos = load_parameters('config/f_seating_half_edge.json')
 class_zig_pos = load_parameters('config/f_seating_half_zig.json')
+
+large_class = load_parameters('config/large_classroom.json')
+
+small_class = load_parameters('config/small_classroom.json')
+
 #
 aerosol_params = load_parameters('results/aerosol_data_.json')
 dp = load_parameters('results/default_data_.json')
 select_dict = load_parameters('config/neighbor_logic.json')
+
+
+def vents_small_10cm_boxes():
+    x2 = [i / 10 for i in range(100)]
+    y12 = [(i**2 / 10) + 6 for i in x2]
+    y22 = [(i-14)**2 / 10 + 6 for i in x2]
+    y32 = [(i - 7) * 10  for i in x2]
+    y42 = [(i - 6) * 10 for i in x2]
+    y32 = [i * 2 - 2 for i in x2]
+    y42 = [i * 2 - 6 for i in x2]
+    y52 = [-(i * 16) + 140 for i in x2]
+    y62 = [-(i * 16) + 105 for i in x2]
+    room_matrix = [[1 for col in range(100)] for row in range(100)]
+    for i in range(100):
+        for j in range(100):
+            if j / 10 <= y12[i]:
+                room_matrix[j][i] += 1
+            if j / 10 >= y22[i]:
+                room_matrix[j][i] -= 1
+            # left window
+            if j / 10 < y32[i]:
+                room_matrix[j][i] += 1
+            if j / 10 > y42[i]:
+                room_matrix[j][i] -= 1
+#             # right window
+            if j / 10 < y52[i]:
+                room_matrix[j][i] += 1
+            if j / 10 > y62[i]:
+                room_matrix[j][i] -= 1
+#             between windows
+            if (j/10 > y42[i]) and (j/10 > y62[i]):
+                room_matrix[j][i] += 2
+            if (j / 10 + 2 < y42[i]) and (j / 10  + 20 < y62[i]):
+                room_matrix[j][i] -= 1
+    return np.array(room_matrix)
+class_flow_velocity = vents_small_10cm_boxes()
+
+def get_direction():
+    
+    return
+
+class_flow_direction = temp()
 
 
 def get_distance_class(student_pos, this_id, initial_id):
@@ -147,55 +194,6 @@ def make_new_heat(old, class_flow_pos, init_infected_ = None):
             air_val = air_effects(i, j, neighbor_val)
             out[i][j] = air_val  # +=???
     return out, init_infected_
-
-class_flow_direction = np.array([[1, 1, 1, 2, 3, 4, 4],
-              [1, 4, 7, 8, 9, 9, 6],
-              [4, 7, 7, 8, 9, 9, 6],
-              [4, 4, 5, 2, 5, 4, 4],
-              [8, 5, 5, 2, 5, 5, 8], #
-              [1, 1, 1, 2, 5, 6, 6],
-              [1, 1, 2, 2, 5, 6, 6],
-              [1, 1, 2, 2, 3, 3, 6],
-              [5, 5, 5, 2, 5, 5, 5],
-              [1, 1, 1, 2, 3, 3, 3], #
-              [1, 1, 2, 2, 2, 3, 3],
-              [1, 1, 2, 2, 2, 3, 3],
-              [1, 1, 2, 2, 2, 3, 3],
-              [1, 1, 2, 2, 2, 3, 3],
-              [1, 5, 5, 2, 2, 3, 3], #
-              [1, 1, 1, 2, 2, 3, 3],
-              [1, 1, 1, 2, 2, 3, 3],
-              [1, 1, 1, 2, 3, 6, 6],
-              [1, 1, 2, 2, 3, 3, 6],
-              [1, 2, 2, 2, 3, 3, 6], #
-              [4, 4, 4, 5, 6, 6, 6],
-              [2, 2, 2, 5, 5, 5, 5],
-              [2, 2, 5, 8, 2, 2, 2]])
-class_flow_velocity = np.array([[3,3,2,1,1,0,1],
-    [1,0,1,2,3,2,2],
-    [1,2,1,0,1,2,2],
-    [2,1,0,0,0,1,1],
-    [2,1,0,0,0,1,1], #
-    [2,1,0,0,0,0,1],
-    [1,1,0,0,0,0,1],
-    [1,2,1,1,0,0,0],
-    [0,1,2,1,0,1,2],
-    [0,0,0,0,0,0,1], #
-    [2,2,2,2,2,1,1],
-    [3,2,2,2,2,2,2],
-    [2,0,0,0,0,1,2],
-    [1,2,2,2,2,2,1],
-    [1,1,2,2,2,1,1], #
-    [1,1,2,2,2,1,1],
-    [1,1,1,1,1,1,1],
-    [2,2,2,2,2,2,2],
-    [2,2,3,3,3,2,2],
-    [1,1,2,2,2,1,1], #
-    [1,1,2,2,2,1,1],
-    [1,1,1,1,1,1,1],
-    [1,1,1,1,0,0,0],
-    [1,1,0,0,0,0,0]])
-#
 
 def concentration_distribution(num_steps, num_sims, class_flow_pos):
     '''

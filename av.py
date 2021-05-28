@@ -6,9 +6,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-
 sys.path.insert(0, 'src')
-from class import class_sim
+from classroom import class_sim
 from infection import return_aerosol_transmission_rate
 
 def load_parameters_av(filepath):
@@ -34,7 +33,7 @@ class user_viz():
         super(user_viz, self).__init__()
         # separate input params
         self.input_params = load_parameters_av(filepath='results/default_data_.json')
-        self.trip_length = self.input_params["trip_length"]
+        self.class_length = self.input_params["class_length"]
         self.students_var = self.input_params["number_students"]
         self.mask_var = self.input_params["mask_wearing_percent"]
         self.window_var = self.input_params["windows"]
@@ -78,14 +77,20 @@ class user_viz():
         based on number of students
         '''
         # get seating type:
-        temp = self.seat_var
-        if temp == "Full Occupancy":
-            seat_dict = self.load_parameters('config/f_seating_full.json')
-        else:
-            if temp == "Window Seats Only":
-                seat_dict = self.load_parameters('config/f_seating_half_edge.json')
-            else:
-                seat_dict = self.load_parameters('config/f_seating_half_zig.json')
+        ########################## This got removed
+        # 
+        # temp = self.seat_var
+        # if temp == "Full Occupancy":
+        #     seat_dict = self.load_parameters('config/f_seating_full.json')
+        # else:
+        #     if temp == "Window Seats Only":
+        #         seat_dict = self.load_parameters('config/f_seating_half_edge.json')
+        #     else:
+        #         seat_dict = self.load_parameters('config/f_seating_half_zig.json')
+        #
+        #         ########################################################
+
+
         # evaluate temp based on # students
         num_kids = self.students_var
         temp_dict = {}
@@ -134,7 +139,7 @@ class user_viz():
         average over model runs: out_matrix averages
         '''
         class_seating = self.generate_class_seating()
-        class_trip, conc_array, out_mat, chance_nonzero = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.trip_length, self.seat_var) # replace default with selected
+        class_trip, conc_array, out_mat, chance_nonzero = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.class_length, self.seat_var) # replace default with selected
         # print('conc_heat_figure')
         # plt.figure(figsize=(5,4))
         # plt.subplots()
@@ -175,7 +180,7 @@ class user_viz():
 
         # run class model
         class_seating = self.generate_class_seating()
-        class_trip, conc_array, out_mat, chance_nonzero = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.trip_length, self.seat_var) # replace default with selected
+        class_trip, conc_array, out_mat, chance_nonzero = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.class_length, self.seat_var) # replace default with selected
         self.chance_nonzero = chance_nonzero
         # print(chance_nonzero, 'more than none?')
         self.conc_array = conc_array

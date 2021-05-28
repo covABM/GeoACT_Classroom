@@ -32,14 +32,17 @@ def main(targets):
     # for i in sys.argv:
     # print('t', targets, '0', args.0])
     # number each of these:
-    floor_area = float(args.class_type) * 2.3 * 3.28084 # square feet
-    trip_duration = args.trip_duration
+    # floor_area = float(args.class_type) * 2.3 * 3.28084 # square feet
+    floor_areas_by_room = {"small": 9000, "large": 15000, "library": 30000, "gym": 50000}
+    print('args', args)
+    floor_area = floor_areas_by_room[args.room_type]
+
+    class_duration = args.class_duration
     number_of_students = args.num_students
     mask = args.mask_wearing
     windows = args.windows
     num_sims_ = 100 # default
     mask_eff_ = .1 # default
-    seating_ = args.seating_type
     air_exchange_rate = aerosol_data['air_exchange_rate']
 
     if windows == 'closed':
@@ -53,9 +56,9 @@ def main(targets):
     else:
         air_exchange_rate = 6
 
-    class_type_arg = '-l' #length of class
-    trip_duration_arg = '-t'
-    seating_chart_type_arg = '-s'
+    room_type_arg = '-r' #type of classroom
+    class_duration_arg = '-c'
+    # seating_chart_type_arg = '-s'
     num_students_in_class = '-n'
     mask_wearing_arg = '-m' # likelihood
     windows_arg = '-w'
@@ -71,7 +74,7 @@ def main(targets):
         # and/or create a new file w/ their parameter selection
 
     # update aerosol to results
-    aerosol_data["room_type"] = room_type
+    aerosol_data["floor_area"] = floor_area
     aerosol_data["mask_passage_prob"] = mask_eff_
     aerosol_data["mean_ceiling_height"] = 6.07
     aerosol_data["air_exchange_rate"] = air_exchange_rate
@@ -84,12 +87,12 @@ def main(targets):
     aerosol_data["max_viral_deact_rate"] = 0.3
 
     # update default to results
-    default_data["trip_length"] = int(trip_duration)
+    default_data["class_length"] = int(class_duration)
     default_data["number_students"] = int(number_of_students)
     default_data["mask_var"] = int(mask)
-    default_data["window_var"] = int(windows)
+    default_data["window_var"] = windows
     default_data["number_simulations"] = int(num_sims_)
-    default_data["seating_choice"] = seating_
+    # default_data["seating_choice"] = seating_
 
     with open('results/default_data_.json', 'w') as f:
         json.dump(default_data, f)
@@ -113,7 +116,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('-r', '--room_type', required=True)
     parser.add_argument('-c', '--class_duration', required=True)
-    parser.add_argument('-s', '--seating_type', required=True)
     parser.add_argument('-n', '--num_students', required=True)
     parser.add_argument('-m', '--mask_wearing', required=True)
     parser.add_argument('-w', '--windows', required=True)
