@@ -1,4 +1,5 @@
-{"floor_area": 0,
+{"room_type": "test",
+"floor_area": 0,
  "mean_ceiling_height": 0,
  "air_exchange_rate": 0,
  "primary_outdoor_air_fraction":0,

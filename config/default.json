@@ -1,5 +1,6 @@
 {"trip_length": 0,
-  "bus_length": 0,
+  "room_size": 0,
+  "room_type": "test",
   "number_students": 0,
   "mask_wearing_percent": 0,
   "windows": 0,

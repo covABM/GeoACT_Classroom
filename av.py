@@ -33,22 +33,32 @@ class user_viz():
         super(user_viz, self).__init__()
         # separate input params
         self.input_params = load_parameters_av(filepath='results/default_data_.json')
-        self.class_length = self.input_params["class_length"]
+        self.room_size = self.input_params["room_size"] # in m
         self.students_var = self.input_params["number_students"]
         self.mask_var = self.input_params["mask_wearing_percent"]
         self.window_var = self.input_params["windows"]
+        self.duration = self.input_params["trip_length"] # depracated input var
         self.number_simulations = self.input_params["number_simulations"]
 
         self.input_params2 = load_parameters_av(filepath='results/aerosol_data_.json')
         self.mask_eff = self.input_params2["mask_passage_prob"]
-        self.seat_var = self.input_params["seating_choice"]
+        self.room_type = self.input_params2["room_type"]
         self.class_trips = []
-
+        if self.room_type == 'test':
+            print('###################################################################')
+        if self.room_type == 'small':
+            self.seat_dict = load_parameters_av(filepath='config/small_classroom.json')
+        elif self.room_type == 'large':
+            self.seat_dict = load_parameters_av(filepath='config/large_classroom.json')
+        elif self.room_type in ['library', 'gym', 'sports practice', 'band room', 'theatre']:
+            self.seat_dict = load_parameters_av(filepath='config/small_classroom.json')
+            print('These activities are still being implemented- please reach out if you need them expedited')
+        else:
+            print('Error! Problem loading seating')
         # class dimensions
         # width and height are relatively standard: ergo area is 2.3 * L
-        self.class_length = self.input_params["class_length"]
-        self.floor_area = self.class_length * 2.3 # Sq M. (TODO: convert to units?)
-
+        self.room_size = self.input_params["room_size"] # sq m
+        self.floor_area = self.input_params2["floor_area"]
 
         # functions
         self.relative_airflow = 'placeholder'
@@ -76,26 +86,12 @@ class user_viz():
         based on full vs zigzag vs edge
         based on number of students
         '''
-        # get seating type:
-        ########################## This got removed
-        # 
-        # temp = self.seat_var
-        # if temp == "Full Occupancy":
-        #     seat_dict = self.load_parameters('config/f_seating_full.json')
-        # else:
-        #     if temp == "Window Seats Only":
-        #         seat_dict = self.load_parameters('config/f_seating_half_edge.json')
-        #     else:
-        #         seat_dict = self.load_parameters('config/f_seating_half_zig.json')
-        #
-        #         ########################################################
-
 
         # evaluate temp based on # students
         num_kids = self.students_var
         temp_dict = {}
         for i in range(int(num_kids)):
-            temp_dict[str(i)] = seat_dict[str(i)]
+            temp_dict[str(i)] = self.seat_dict[str(i)]
         # print(temp)
         # print(temp_dict)
         return temp_dict
@@ -134,17 +130,10 @@ class user_viz():
 
         return
 
-    def conc_heat(self):
+    def conc_heat(self, class_seating, class_trip, conc_array, out_mat, chance_nonzero):
         '''
         average over model runs: out_matrix averages
         '''
-        class_seating = self.generate_class_seating()
-        class_trip, conc_array, out_mat, chance_nonzero = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.class_length, self.seat_var) # replace default with selected
-        # print('conc_heat_figure')
-        # plt.figure(figsize=(5,4))
-        # plt.subplots()
-        # base = plt.gca().transData
-        # fig = plt.subplots() # ????
         rot = mpl.transforms.Affine2D().rotate_deg(180)
         fig = plt.figure()
         ax1 = fig.add_subplot(1, 2, 1)
@@ -170,17 +159,33 @@ class user_viz():
         plt.savefig('results/relative_airflow.png', dpi=300)
 
         print('relative airflow complete!')
-        # plt.show()
-
         return
     # function to run model with user input
-    def model_run(self):
+    def model_run(self, arguments):
         '''
         '''
+        print('args', arguments)
 
         # run class model
         class_seating = self.generate_class_seating()
-        class_trip, conc_array, out_mat, chance_nonzero = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.class_length, self.seat_var) # replace default with selected
+        # make varying input setup for ventilation
+        ################# Make these into User Input
+        w1 = (20, 0)
+        w2 = (74, 0)
+        door = (20, 96)
+        vent = (50, 96) ############### make slider for this maybe ##########
+        window_size = 8 # 40 centimeters diameter
+        vent_size = 2 # 20 centimeters diameter
+
+        temp_loc = {'w1': (25, 0),
+        'w2': (75, 0),
+        'door': (20, 96),
+        'vent': (50, 96),
+        'window_size': 8,
+        'vent_size': 2}
+
+        class_trip, conc_array, out_mat, chance_nonzero = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.duration, self.seat_dict, loc_params=temp_loc) # replace default with selected
+        conc_heat(class_trip, conc_array, out_mat, chance_nonzero)
         self.chance_nonzero = chance_nonzero
         # print(chance_nonzero, 'more than none?')
         self.conc_array = conc_array
