@@ -8,15 +8,15 @@ import os
 ########## default transmission variables
 # setup default infection parameters
 
-floor_area = 86.02  # ft2 # 11.4 m * 2.3 m * (m^2->ft^2) = 86.02 ~= 86 ft^2
-mean_ceiling_height = 12  # ft # 1.85 m -> ft = 6.06 ~= 6 ft
-air_exchange_rate = 20  # /hr (air changes per hour (ACH)) #moving class mph average
+floor_area = 1000  # ft2 # 11.4 m * 2.3 m * (m^2->ft^2) = 86.02 ~= 86 ft^2
+mean_ceiling_height = 4  # ft # 1.85 m -> ft = 6.06 ~= 6 ft
+air_exchange_rate = 6  # /hr (air changes per hour (ACH)) #moving class mph average
 
 
 ##Assumed Parameter Identified as 0.2 for Classrooms, 1.0 for outdoors#
 # and .5 for classes with windows open
-primary_outdoor_air_fraction = 0.5  # 1.0 = natural ventilation
-aerosol_filtration_eff = 0  # >0.9997 HEPA, =0.2-0.9 MERVs, =0 no filter
+primary_outdoor_air_fraction = 0.2  # 1.0 = natural ventilation
+aerosol_filtration_eff = 0.2  # >0.9997 HEPA, =0.2-0.9 MERVs, =0 no filter
 # class has no filter
 
 #Average daily RH for San Diego is 69%
@@ -25,12 +25,12 @@ physical_params = [floor_area, mean_ceiling_height, air_exchange_rate, primary_o
                         aerosol_filtration_eff, relative_humidity]
 
 # Physiological Parameters
-breathing_flow_rate = 0.5  # m3/hr
+breathing_flow_rate = 0.29  # m3/hr
 max_aerosol_radius = 2  # micrometers
 physio_params = [breathing_flow_rate, max_aerosol_radius]
 
 # Disease Parameters
-exhaled_air_inf = 30  # infection quanta/m3, changes with acitivity type.
+exhaled_air_inf = 2.04  # infection quanta/m3, changes with acitivity type.
 max_viral_deact_rate = 0.3  # /hr
 disease_params = [exhaled_air_inf, max_viral_deact_rate]
 

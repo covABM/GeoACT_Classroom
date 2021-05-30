@@ -124,7 +124,7 @@ def make_new_heat(old, class_flow_pos, class_flow_direction, class_flow_velocity
     1 minute step used to calculate concentration_distribution iteratively
     '''
     kids =list(class_flow_pos.keys())
-    if not init_infected_:
+    if init_infected_ == None:
         init_infected_ = np.random.choice(kids)
     else:
         init_infected_ = init_infected_
@@ -369,7 +369,7 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
         for y in range(concentration_array[conc].shape[0]):
             for x in range(concentration_array[conc].shape[1]):
                 if out_matrix[y][x] < 0:
-                    out_matrix[y][x] *= -1
+                    out_matrix[y][x] = 0
                 # out_matrix[y][x] = out_matrix[y][x] / max
 
     # print(concentration_, 'concentration')
