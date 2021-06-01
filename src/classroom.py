@@ -144,7 +144,7 @@ def make_new_heat(old, class_flow_pos, class_flow_direction, class_flow_velocity
         for j in range(len(new[i])):
             neighbor_val = get_incoming(i, j, new, class_flow_direction, class_flow_velocity)
             air_val = air_effects(i, j, neighbor_val)
-            out[i][j] = air_val  # +=???
+            out[i][j] = air_val  # 
     return out, init_infected_
 
 def concentration_distribution(num_steps, num_sims, class_flow_pos, class_flow_direction, class_flow_velocity, room_size):
@@ -231,21 +231,22 @@ def make_velocity_distance(window1, window2, door_location, vent_location, windo
     for i in range(100):
         for j in range(100):
             if j < curve_down[i]: # between windows
-                temp[j][i] = 3
-            elif (j > y1[i]): # top left
-                temp[j][i] = 7
-            elif (j > m2 * i + b2): # left edge
-                temp[j][i] = 4
-            elif (j > m3 * i + b3): # window 1
                 temp[j][i] = 1
-            elif (j < m4 * i + b4): # window 1 and 2
-                temp[j][i] = 2
-            elif (j < m5 * i + b5): # window 2
-                temp[j][i] = 3
-            elif (j < y6[i]): # window 2
+                # Update this to split left and right **
+            elif (j > y1[i]): # top left
+                temp[j][i] = 0
+            elif (j > m2 * i + b2): # left edge
+                temp[j][i] = 7
+            elif (j > m3 * i + b3): # window 1
                 temp[j][i] = 6
+            elif (j < m4 * i + b4): # window 1 and 2
+                temp[j][i] = 5
+            elif (j < m5 * i + b5): # window 2
+                temp[j][i] = 4
+            elif (j < y6[i]): # window 2
+                temp[j][i] = 3
             else:  # top right
-                temp[j][i] = 9
+                temp[j][i] = 2
             # edges
 
             # corners
@@ -307,6 +308,7 @@ def make_velocity_distance(window1, window2, door_location, vent_location, windo
 
 
     return direction, velocity # and other useful variables
+
 def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): # do 1 trip with given params
     '''
     in:
