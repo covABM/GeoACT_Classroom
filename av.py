@@ -170,22 +170,22 @@ class user_viz():
         class_seating = self.generate_class_seating()
         # make varying input setup for ventilation
         ################# Make these into User Input
-        w1 = (20, 0)
-        w2 = (74, 0)
+        w1 = (25, 0)
+        w2 = (75, 0)
         door = (20, 96)
         vent = (50, 96) ############### make slider for this maybe ##########
         window_size = 8 # 40 centimeters diameter
-        vent_size = 2 # 20 centimeters diameter
+        vent_size = 4 # 20 centimeters diameter
 
         temp_loc = {'w1': (25, 0),
         'w2': (75, 0),
         'door': (20, 96),
         'vent': (50, 96),
         'window_size': 8,
-        'vent_size': 2}
+        'vent_size': 4}
 
         class_trip, conc_array, out_mat, chance_nonzero = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.duration, self.seat_dict, loc_params=temp_loc) # replace default with selected
-        conc_heat(class_trip, conc_array, out_mat, chance_nonzero)
+        self.conc_heat(class_trip, conc_array, out_mat, chance_nonzero)
         self.chance_nonzero = chance_nonzero
         # print(chance_nonzero, 'more than none?')
         self.conc_array = conc_array
@@ -210,7 +210,7 @@ class user_viz():
 
         plt.yticks(np.arange(0, 3500, 700), np.arange(0, 3500, 700) / 3500)
 
-
+        ##### what the fuck do i do with this????####
         # rescale y axis to be % based
         plt.xlabel('Likelihood of exposure to infectious dose of particles                         ')
         plt.ylabel('Density estimation of probability of occurrence')

@@ -84,8 +84,9 @@ def main(args):
     print('user viz start')
     airavata_output = user_viz()
     # run all functions
+    print('plot seating start')
     airavata_output.plot_class_seating() # swap this to new viz for ventilation
-
+    print('model run start')
     airavata_output.model_run(args)
 
     print('finis')

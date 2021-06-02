@@ -40,6 +40,9 @@ select_dict = load_parameters('config/neighbor_logic.json')
 aerosol_params = load_parameters('results/aerosol_data_.json')
 dp = load_parameters('results/default_data_.json')
 
+initial_spread = np.array([[0, 0, 0, .03, 0, 0, 0],[0, 0, .04, .1, .03, 0, 0],[0, .03, .1, .2, .1, .04, 0],[.03, .1, .2, .3, .2, .1, .03],[0, .04, .1, .2, .1, .03, 0],[0, 0, .03, .1, .04, 0, 0],[0, 0, 0, .03, 0, 0, 0]])
+
+
 def get_distance_class(student_pos, this_id, initial_id):
     x1, y1 = student_pos[initial_id]
     x2, y2 = student_pos[this_id]
@@ -119,6 +122,159 @@ def air_effects(i, j, oldQ):
     # This is depracated as of 5/28
     return oldQ
 
+def initial_cough(init_x, init_y, initial_spread, old):
+    '''
+    Initially infected student distributing at each step to nearby
+
+    TODO: Include code to catch students being next to walls
+
+    TODO: Implement these as input variables
+    Current Assumptions:
+    Respiratory Activity = 2.04 quanta / ft^3
+    Breathing Rate = .29 ft^3 / min
+
+
+    '''
+    new = old.copy()
+    for i in range(len(initial_spread)):
+        for j in range(len(initial_spread[0])):
+            new[init_y + j - 3][init_x + i - 3] += initial_spread[i][j]
+
+    return new
+
+def normalize_(matrix):
+    '''
+    Make everything 0.01-1
+
+    I dislike mpl vmin and vmax
+    '''
+    max_ = 0
+    new = np.zeros(matrix.shape)
+    for y in range(len(matrix)):
+        for x in range(len(matrix[y])):
+            if matrix[y][x] > max_:
+                max_ = matrix[y][x]
+    for y in range(len(matrix)):
+        for x in range(len(matrix[y])):
+            new[y][x] = matrix[y][x] / max_
+
+    return new
+
+def distribute(new, ach, initial, dir_matrix, vel_matrix, loc):
+    '''
+    0 1 2
+    7 8 3
+    6 5 4
+    corners and edges: direction face inwards
+
+    near open window: TODO
+
+
+    '''
+    out = np.zeros(new.shape)
+    idx_ = str(initial)
+    init_x, init_y = loc[idx_]
+    dir_ref = {"-1,1": 0,
+           "0,1": 1,
+           "1,1": 2,
+           "1,0": 3,
+           "1,-1": 4,
+           "0,-1": 5,
+           "-1,-1": 6,
+           "-1,0": 7,
+           "0,0": 8}
+
+    for y in range(len(new)):
+        for x in range(len(new[0])):
+            conc = new[y][x]
+
+            # corners
+            if ((y == 0) and (x == 0)): # bottom left
+                iter_arr_x = [0, 1]
+                iter_arr_y = [0, 1]
+                d = 2
+                v = vel_matrix[y][x]
+            elif ((y==0) and (x==len(new[0]) - 1)): # bottom right
+                iter_arr_x = [-1, 0]
+                iter_arr_y = [0, 1]
+                d = 0
+                v = vel_matrix[y][x]
+            elif ((y == len(new) - 1) and (x == len(new[0]) - 1)): # top right
+                iter_arr_x = [-1, 0]
+                iter_arr_y = [-1, 0]
+                d = 6
+                v = vel_matrix[y][x]
+            elif ((y == len(new)-1) and (x == 0)): # top left
+                iter_arr_x = [0, 1]
+                iter_arr_y = [-1, 0]
+                d = 4
+                v = vel_matrix[y][x]
+            # edges
+            elif (y == 0): # bottom
+                iter_arr_x = [-1, 0, 1]
+                iter_arr_y = [0, 1]
+                d = 1
+                v = vel_matrix[y][x]
+            elif (y == len(new) - 1): # top
+                iter_arr_x = [-1, 0, 1]
+                iter_arr_y = [-1, 0]
+                d = 5
+                v = vel_matrix[y][x]
+            elif (x == 0): # left
+                iter_arr_x = [0, 1]
+                iter_arr_y = [-1, 0, 1]
+                d = 3
+                v = vel_matrix[y][x]
+            elif (x == len(new[0]) - 1): # right
+                iter_arr_x = [-1, 0]
+                iter_arr_y = [-1, 0, 1]
+                d = 7
+                v = vel_matrix[y][x]
+            # window
+
+
+            # everywhere else
+            else:
+                iter_arr_x = [-1, 0, 1]
+                iter_arr_y = [-1, 0, 1]
+                d = dir_matrix[y][x]
+                v = vel_matrix[y][x]
+            min_ = 1
+            airflow = ach * v / 60
+            for i in iter_arr_x:
+                for j in iter_arr_y:
+                    idx = str(i) + ',' + str(j)
+                    if d == dir_ref[idx]:
+                        out[y + j][x + i] += airflow * conc * (1 - .02 * v)
+                    elif (i ==0) and (j == 0):
+                        out[y][x] += (1 - airflow) * conc * (1 - .02 * v)
+                        if out[y][x] < 0:
+                            out[y][x] = 0
+                    else:
+                        out[y + j][x + i] += .02 * v * conc
+                    if out[y + j][x + i] < min_:
+                        min_ = out[y + j][x + i]
+    return out, min_
+
+def concentration_distribution_(ach, direction_matrix, velocity_matrix, loc):
+    first = np.zeros((100, 100))
+    initial = 0
+    temp = initial_cough(25, 40, initial_spread, first)
+    vent_, min_0 = distribute(temp, ach, initial, direction_matrix, velocity_matrix, loc)
+    temp_arr_ = []
+    vent_arr = []
+    min_arr = []
+    normed_arr = []
+    for i in range(180):
+        temp = initial_cough(25, 40, initial_spread, vent_)
+        vent_, min_i = distribute(temp, ach, initial, direction_matrix, velocity_matrix, loc)
+        normed = normalize_(vent_)
+        temp_arr_.append(temp)
+        vent_arr.append(vent_)
+        min_arr.append(min_i)
+        normed_arr.append(normed)
+    return temp_arr_, vent_arr, min_arr, normed_arr
+
 def make_new_heat(old, class_flow_pos, class_flow_direction, class_flow_velocity, init_infected_ = None):
     '''
     1 minute step used to calculate concentration_distribution iteratively
@@ -144,7 +300,7 @@ def make_new_heat(old, class_flow_pos, class_flow_direction, class_flow_velocity
         for j in range(len(new[i])):
             neighbor_val = get_incoming(i, j, new, class_flow_direction, class_flow_velocity)
             air_val = air_effects(i, j, neighbor_val)
-            out[i][j] = air_val  # 
+            out[i][j] = air_val  #
     return out, init_infected_
 
 def concentration_distribution(num_steps, num_sims, class_flow_pos, class_flow_direction, class_flow_velocity, room_size):
@@ -206,13 +362,13 @@ def make_velocity_distance(window1, window2, door_location, vent_location, windo
     # down left
     x3 = [w1right, v1right]
     y3 = [0, 100]
-    m3 = 100/(v1right-w1right)
+    m3 = 100/(vent_location[0]-w1right)
     b3 = 0 - m3 * w1right
     # down
     w2left = window2[0] - window_size/2
     w2right = window2[0] + window_size/2
-    x4 = [w2left, v1left]
-    m4 = 100/(v1left-w2left)
+    x4 = [w2left, v1right]
+    m4 = 100/(vent_location[0]-w2left)
     b4 = 0 - m4 * w2left
     # down right
     x5 = [w2right, v1right]
@@ -227,12 +383,22 @@ def make_velocity_distance(window1, window2, door_location, vent_location, windo
     x7 = [i for i in range(100)]
     curve_down = [-(((i-center) / 5)**2) + center/4 for i in range(100)]
 
+
+
+
+    #########################################
+
     # define direction plot
     for i in range(100):
         for j in range(100):
+            # VENT MATH TO MAKE SURE THIS DOESN'T MESS UP ###################### TODO: BUG WITH NEGATIVE SLOPES: WTF DO I DO
             if j < curve_down[i]: # between windows
-                temp[j][i] = 1
-                # Update this to split left and right **
+                if i < center - 5:
+                    temp[j][i] = 0
+                elif i > center + 5:
+                    temp[j][i] = 2
+                else:
+                    temp[j][i] = 1
             elif (j > y1[i]): # top left
                 temp[j][i] = 0
             elif (j > m2 * i + b2): # left edge
@@ -325,6 +491,7 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
         seat_dict = load_parameters('config/small_classroom.json') ## TODO
         print('Left to be implemented: Library, Sports, Gym, Theatre')
     flow_seating = {key: value for key, value in seat_dict.items() if int(key) < n_students}
+    print(flow_seating, 'flow')
     # initialize model run data storage
     who_infected_class = {str(i): 0 for i in range(len(flow_seating.keys()))}
     init_inf_dict = who_infected_class.copy()
@@ -339,7 +506,7 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
     door = (20, 96)
     vent = (50, 96)
     window_size = 8
-    vent_size = 2
+    vent_size = 4
     ################################################3
     direction, velocity = make_velocity_distance(w1, w2, door, vent, window_size, vent_size)
 
@@ -352,11 +519,10 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
 
     # print(dp, 'default')
     aerosol = return_aerosol_transmission_rate(aerosol_params['floor_area'], aerosol_params['mean_ceiling_height'], aerosol_params['air_exchange_rate'], aerosol_params['aerosol_filtration_eff'], aerosol_params['relative_humidity'], aerosol_params['breathing_flow_rate'], aerosol_params['exhaled_air_inf'], aerosol_params['max_viral_deact_rate'], aerosol_params['mask_passage_prob'])
-    concentration_array, avg_matrix = concentration_distribution(n_steps, n_sims, seat_dict, direction, velocity, room_size='100x100')
-    # return average concentration over run
-    print('ok', len(concentration_array))
-    print(len(concentration_array[0]))
-    print(len(concentration_array[0][0]))
+    # concentration_array, avg_matrix = concentration_distribution(n_steps, n_sims, seat_dict, direction, velocity, room_size='100x100')
+    # concentration_array, avg_matrix = concentration_distribution_()
+    # ACH, DIR, VEL, LOC
+    concentration_array, vent_arr, min_arr, normed_arr = concentration_distribution_(aerosol_params['air_exchange_rate'], direction, velocity, flow_seating)
     out_matrix = np.array(np.zeros(shape=concentration_array[0].shape))
     max_val = 0
     for conc in range(len(concentration_array)):
