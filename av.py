@@ -163,7 +163,119 @@ class user_viz():
     # function to run model with user input
     def model_run(self, arguments):
         '''
+        Updated 7/7/21 with _bus code
+
+        1 SETUP
+        2 LOADING
+        3 CONCENTRATION + 2
+        4 HISTOGRAMS + 3
+        5 SCATTER/KDE + 2
+        6 T_RISK AVERAGE + 1
+
         '''
+
+
+
+        # 1 SETUP
+        print('Model Running...')
+
+        # class_sim()
+
+        # temp variables
+        self.chance_nonzero = 0
+        self.conc_array = 0
+
+
+
+        # 2 LOADING
+        plt.figure()
+
+        output_filepath = "output/class_simulation"
+        seating_chart = self.seat_var
+
+        # seating chart ################################# TODO
+        if seating_chart == "grid":
+            seat_dict = self.load_parameters()
+        elif seating_chart == "circles":
+            seat_dict = self.load_parameters()
+        else:
+            seat_dict = self.load_parameters()
+            print("ERROR")
+
+
+        # 3 CONCENTRATION + 2
+
+        print('Plot Concentration')
+        x_arr = []
+        y_arr = []
+        for i in seat_dict.items(): ################### change seating
+            x_arr.append(i[1][1])
+            y_arr.append(i[1][0] * 1.5 + 1) # seat fix
+        rot = mpl.transforms.Affine2D().rotate_deg(180)
+
+        # Set up Figure
+        fig, ax1 = plt.subplots()
+        plt.matshow(out_mat, cmap="OrRd", norm=mpl.colors.LogNorm())
+        plt.arrow(-2,24,0,-26, head_width=0.2, head_length=0.2, fc='k', ec='k')
+        plt.scatter(x=x_arr, y=y_arr, s=5, c='k')
+        plt.gcf().set_size_inches(2,2)
+        plt.annotate(xy=(-1, -1), text='front', fontsize=5)
+        plt.annotate(xy=(-1, 24), text='back', fontsize=5)
+        plt.axis('off')
+
+        ax2 = fig.add_subplot(1,2,2)
+        ax2.matshow(out_mat, cmap="OrRd")#, norm=mpl.colors.LogNorm())
+        plt.arrow(-2,24,0,-26, head_width=0.2, head_length=0.2, fc='k', ec='k')
+        plt.scatter(x=x_arr, y=y_arr, s=5)
+        plt.gcf().set_size_inches(2,2)
+        plt.suptitle('Viral Concentration Heatmap', fontsize=7.5)
+        plt.annotate(xy=(-1, -1), text='front', fontsize=5)
+        plt.annotate(xy=(-1, 24), text='back', fontsize=5)
+        plt.axis('off')
+        fig.text(.1, .01, 'Concentration of viral particles in the\nLeft heatmap is Log Normalized for visibility', fontsize=4)
+        plt.savefig(output_filepath + 'concentration.png', dpi=300)
+        plt.close()
+
+
+        # 4 HISTOGRAMS + 3
+
+
+
+
+        # 5 SCATTER/KDE + 2
+
+
+
+
+        # 6 T_RISK AVERAGE + 1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         print('args', arguments)
 
         # run class model
