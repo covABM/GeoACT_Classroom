@@ -239,6 +239,93 @@ class user_viz():
 
         # 4 HISTOGRAMS + 3
 
+        # HISTOGRAMS
+        # Hist 1 Seating
+        print('Seating...')
+        fig1, ax1 = plt.subplots()
+        seat_types = ['full', 'window', 'zigzag']
+        for s in seat_types:
+            bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = bus_sim(int(self.students_var), self.mask_var, self.number_simulations, self.trip_length, s, self.window_var) # SEATING
+            pd.Series(bus_out_array[2]).plot.hist(bins=np.arange(0, 0.12, 0.001), alpha=.5, ax=ax1)
+
+        plt.legend(['Full Occupancy Seating', 'Window Seats Only', 'Zigzag Seating'])
+        plt.xlabel('Mean likelihood of transmission at each step')
+        plt.ylabel('Number of students with this average risk of transmission')
+        seat_filepath = output_filepath + '_seating.png'
+        fig1.savefig(seat_filepath, dpi=300)
+        print('seating complete')
+        plt.close(fig1)
+
+        # Hist 2 Windows
+        '''
+        TODO:
+        Dynamic X minmax
+        '''
+
+
+        print('Windows...')
+        fig2, ax2 = plt.subplots()
+        window_types = [0, 6]
+        win_out_df = pd.DataFrame(columns=window_types)
+        temp = 0.051
+        temp_step = 0.001
+
+        # add dynamic x range ToDo
+
+        for w in window_types:
+            bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = bus_sim(int(self.students_var), self.mask_var, self.number_simulations, self.trip_length, self.seat_var, w) # WINDOW
+            x_range = [.051, .102, .153, .204]
+
+            ## 7/4 TODO: why is it all going wrong
+
+
+            for i in range(len(x_range)):
+                if x_range[i] < max(bus_out_array[2].values()):
+                    pass
+                else:
+                    temp = x_range[i]
+                    temp_step = 0.001 * (i + 1)
+
+
+            # TODO: Check all values of KDE are positive
+
+            # pd.Series(bus_out_array[2]).plot.kde(alpha=.5, ax=ax2)
+            # pd.Series(bus_out_array[2]).plot.hist(alpha=.5, ax=ax2)
+
+            ###############################################
+
+            # SEABORN
+            sns.distplot(list(bus_out_array[2].values()), ax=ax2, rug=True, kde=False, hist_kws={"histtype": "step", "linewidth": 3, "alpha": 1})
+
+
+        fig2.legend(['Windows Closed', 'Windows Open 6 Inches'])
+        plt.xlabel('Mean likelihood of transmission at each step')
+        plt.ylabel('Number of students with this average risk of transmission')
+        seat_filepath_2 = output_filepath + '_windows.png'
+        fig2.savefig(seat_filepath_2, dpi=300)
+        plt.close(fig2)
+        print('Windows complete!')
+
+        # Hist 3 Masks
+
+        print('Masks...')
+        fig3 = plt.figure(3)
+        mask_amount = [1, .9, .8, .7]
+        print('start masks')
+        colorlist = ['blue', 'green', 'yellow', 'red']
+        count_ = 0
+
+        for m in mask_amount:
+            bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = bus_sim(int(self.students_var), m, self.number_simulations, self.trip_length, self.seat_var, self.window_var) # SEATING
+            pd.Series(bus_out_array[2]).plot.hist(bins=np.arange(0, 0.056, 0.001), alpha=.5, color=colorlist[count_])
+            count_ += 1
+        plt.legend(['100% Mask compliance', '90% Mask compliance', '80% Mask compliance', '70% Mask compliance'])
+        plt.xlabel('Mean likelihood of transmission at each step')
+        plt.ylabel('Number of students with this average risk of transmission')
+        seat_filepath_3 = output_filepath + '_masks.png'
+        fig3.savefig(seat_filepath_3, dpi=300)
+        plt.close(fig3)
+        print('Masks complete!')
 
 
 
