@@ -5,7 +5,16 @@ sys.path.insert(0, 'src')
 from av import *
 import json
 
-def load_everything(default_data, aerosol_data, args):
+def main(args):
+    '''
+    args = airavata inputs
+    '''
+    with open('config/default.json') as f:
+        default_data = json.load(f)
+    with open('config/aerosol.json') as g:
+        aerosol_data = json.load(g)
+
+    floor_area = max(aerosol_data['floor_area'], 100) # THIS IS DEFAULT WHAT SHOULD THE ROOM SIZE BE
     room_type = args.room_type # string
     duration = args.duration # in minutes
     number_of_students = args.num_students # total occupancy
@@ -14,14 +23,10 @@ def load_everything(default_data, aerosol_data, args):
     indoors = args.indoors # 1 if yes, 0 if no
     vent_loc = args.vent_locations # list of tuples
     window_loc = args.window_locations # list of xy tuples
-    room_size = args.room_type
+    # room_size = args.room_type
     num_sims_ = 100 # default
     mask_eff_ = .1 # default
     air_exchange_rate = aerosol_data['air_exchange_rate']
-
-    floor_areas_by_room = {"small": 1000, "large": 1500, "library": 3000, "gym": 5000} # square meters
-    floor_area = floor_areas_by_room[args.room_type] * 10.7639 # Convert to square feet
-
 
     if windows == 'closed':
         air_exchange_rate = 2 # TESTING for windows closed
@@ -41,6 +46,19 @@ def load_everything(default_data, aerosol_data, args):
     num_students_in_class = '-n'
     mask_wearing_arg = '-m' # likelihood
     windows_arg = '-w'
+    adults_arg = '-a'
+
+    indoors = '-i'
+    vent_locations = '-v'
+    window_locations = 'l'
+    room_type_ = '-s'
+
+
+
+
+
+
+
 
     # update aerosol to results
     aerosol_data["floor_area"] = floor_area
@@ -62,7 +80,7 @@ def load_everything(default_data, aerosol_data, args):
     default_data["window_var"] = windows
     default_data["number_simulations"] = int(num_sims_)
     aerosol_data["room_type"] = room_type
-    aerosol_data["room_size"] = floor_areas_by_room[args.room_type]
+    aerosol_data["room_size"] = floor_area
     # default_data["seating_choice"] = seating_
 
     with open('results/default_data_.json', 'w') as f:
@@ -71,25 +89,22 @@ def load_everything(default_data, aerosol_data, args):
         json.dump(aerosol_data, g)
     print('json loading done')
 
-def main(args):
-    '''
-    args = airavata inputs
-    '''
-    with open('config/default.json') as f:
-        default_data = json.load(f)
-    with open('config/aerosol.json') as g:
-        aerosol_data = json.load(g)
 
-    load_everything(default_data, aerosol_data, args)
-    print('user viz start')
-    airavata_output = user_viz()
-    # run all functions
-    print('plot seating start')
-    airavata_output.plot_class_seating() # swap this to new viz for ventilation
-    print('model run start')
-    airavata_output.model_run(args)
 
-    print('finis')
+    return
+
+
+
+def main_2():
+    '''
+    Run functions with new json inputs
+    '''
+
+    av_out = user_viz()
+
+    av_out.model_run()
+
+    print('Simulation complete! Please check /output folder for output.')
 
     return
 
@@ -107,7 +122,7 @@ if __name__ == '__main__':
     # These are experimental- add sliders in future to allow for easy custom rooms
     parser.add_argument('-v', '--vent_locations') # x, y location
     parser.add_argument('-l', '--window_locations') # x, y location
-    parser.add_argument('-s', '--room_size') # Length x Width in M
 
     args = parser.parse_args()
     main(args)
+    main_2()

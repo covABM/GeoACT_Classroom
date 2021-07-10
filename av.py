@@ -37,7 +37,7 @@ class user_viz():
         self.students_var = self.input_params["number_students"]
         self.mask_var = self.input_params["mask_wearing_percent"]
         self.window_var = self.input_params["windows"]
-        self.duration = self.input_params["trip_length"] # depracated input var
+        self.duration = self.input_params["duration"] #
         self.number_simulations = self.input_params["number_simulations"]
 
         self.input_params2 = load_parameters_av(filepath='results/aerosol_data_.json')
@@ -161,7 +161,7 @@ class user_viz():
         print('relative airflow complete!')
         return
     # function to run model with user input
-    def model_run(self, arguments):
+    def model_run(self):
         '''
         Updated 7/7/21 with _bus code
 
@@ -173,17 +173,76 @@ class user_viz():
         6 T_RISK AVERAGE + 1
 
         '''
-
-
-
         # 1 SETUP
         print('Model Running...')
 
         # class_sim()
 
+        # run class model
+        class_seating = self.generate_class_seating()
+        # make varying input setup for ventilation
+        ################# Make these into User Input
+        w1 = (25, 0)
+        w2 = (75, 0)
+        door = (20, 96)
+        vent = (50, 96) ############### make slider for this maybe ##########
+        window_size = 8 # 40 centimeters diameter
+        vent_size = 4 # 20 centimeters diameter
+
+        temp_loc = {'w1': (25, 0),
+        'w2': (75, 0),
+        'door': (20, 96),
+        'vent': (50, 96),
+        'window_size': 8,
+        'vent_size': 4}
+
+        class_trip, conc_array, out_mat, chance_nonzero = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.duration, self.room_type, loc_params=temp_loc) # replace default with selected
+
+        print('HUH', chance_nonzero)
+
+        self.conc_heat(class_trip, conc_array, out_mat, chance_nonzero)
+        self.chance_nonzero = chance_nonzero
+        # print(chance_nonzero, 'more than none?')
+        self.conc_array = conc_array
+        self.class_trips.append(class_trip)
+        # print('model_run start')
+        plt.figure(figsize=(5,4))#, dpi=300)
+        plt.gcf().set_size_inches(5,4)
+        # plt.gcf().set_size_inches(5,4)
+        # ax = plt.gca()
+        pd.Series(class_trip).plot.kde(lw=2, c='r')
+        plt.title('Density estimation of exposure')
+        # plt.xlim(0, .004)
+        # print(plt.xticks())
+
+        # set x ticks
+        temp_x = np.array(plt.xticks()[0])
+        str_x = np.array([str(round(int * 100, 2))+'%' for int in temp_x])
+        plt.xticks(temp_x, str_x)
+
+        plt.ticklabel_format(axis="x")#, style="sci", scilimits=(0,0))
+
+        plt.yticks(np.arange(0, 3500, 700), np.arange(0, 3500, 700) / 3500)
+
+        ##### what the fuck do i do with this????####
+        # rescale y axis to be % based
+        plt.xlabel('Likelihood of exposure to infectious dose of particles                         ')
+        plt.ylabel('Density estimation of probability of occurrence')
+        plt.savefig('results/window_curve.png', dpi=300)
+        # plt.show()
+        print('model_run complete!')
+
         # temp variables
         self.chance_nonzero = 0
         self.conc_array = 0
+        print('Seating...')
+        fig1, ax1 = plt.subplots()
+        seat_types = ['full', 'window', 'zigzag']
+        for s in seat_types:
+            bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.duration, s, self.window_var) # SEATING
+            pd.Series(bus_out_array[2]).plot.hist(bins=np.arange(0, 0.12, 0.001), alpha=.5, ax=ax1)
+
+
 
 
 
@@ -191,24 +250,24 @@ class user_viz():
         plt.figure()
 
         output_filepath = "output/class_simulation"
-        seating_chart = self.seat_var
-
-        # seating chart ################################# TODO
-        if seating_chart == "grid":
-            seat_dict = self.load_parameters()
-        elif seating_chart == "circles":
-            seat_dict = self.load_parameters()
-        else:
-            seat_dict = self.load_parameters()
-            print("ERROR")
-
+        # seating_chart = self.seat_var
+        #
+        # # seating chart ################################# TODO
+        # if seating_chart == "grid":
+        #     seat_dict = self.load_parameters()
+        # elif seating_chart == "circles":
+        #     seat_dict = self.load_parameters()
+        # else:
+        #     seat_dict = self.load_parameters()
+        #     print("ERROR")
+        # implement SEATING CHART OPTIONS ############################
 
         # 3 CONCENTRATION + 2
 
         print('Plot Concentration')
         x_arr = []
         y_arr = []
-        for i in seat_dict.items(): ################### change seating
+        for i in self.seat_dict.items(): ################### change seating
             x_arr.append(i[1][1])
             y_arr.append(i[1][0] * 1.5 + 1) # seat fix
         rot = mpl.transforms.Affine2D().rotate_deg(180)
@@ -241,12 +300,6 @@ class user_viz():
 
         # HISTOGRAMS
         # Hist 1 Seating
-        print('Seating...')
-        fig1, ax1 = plt.subplots()
-        seat_types = ['full', 'window', 'zigzag']
-        for s in seat_types:
-            bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = bus_sim(int(self.students_var), self.mask_var, self.number_simulations, self.trip_length, s, self.window_var) # SEATING
-            pd.Series(bus_out_array[2]).plot.hist(bins=np.arange(0, 0.12, 0.001), alpha=.5, ax=ax1)
 
         plt.legend(['Full Occupancy Seating', 'Window Seats Only', 'Zigzag Seating'])
         plt.xlabel('Mean likelihood of transmission at each step')
@@ -273,7 +326,7 @@ class user_viz():
         # add dynamic x range ToDo
 
         for w in window_types:
-            bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = bus_sim(int(self.students_var), self.mask_var, self.number_simulations, self.trip_length, self.seat_var, w) # WINDOW
+            bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.duration, self.seat_var, w) # WINDOW
             x_range = [.051, .102, .153, .204]
 
             ## 7/4 TODO: why is it all going wrong
@@ -316,7 +369,7 @@ class user_viz():
         count_ = 0
 
         for m in mask_amount:
-            bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = bus_sim(int(self.students_var), m, self.number_simulations, self.trip_length, self.seat_var, self.window_var) # SEATING
+            bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = class_sim(int(self.students_var), m, self.number_simulations, self.duration, self.seat_var, self.window_var) # SEATING
             pd.Series(bus_out_array[2]).plot.hist(bins=np.arange(0, 0.056, 0.001), alpha=.5, color=colorlist[count_])
             count_ += 1
         plt.legend(['100% Mask compliance', '90% Mask compliance', '80% Mask compliance', '70% Mask compliance'])
@@ -335,84 +388,3 @@ class user_viz():
 
 
         # 6 T_RISK AVERAGE + 1
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        print('args', arguments)
-
-        # run class model
-        class_seating = self.generate_class_seating()
-        # make varying input setup for ventilation
-        ################# Make these into User Input
-        w1 = (25, 0)
-        w2 = (75, 0)
-        door = (20, 96)
-        vent = (50, 96) ############### make slider for this maybe ##########
-        window_size = 8 # 40 centimeters diameter
-        vent_size = 4 # 20 centimeters diameter
-
-        temp_loc = {'w1': (25, 0),
-        'w2': (75, 0),
-        'door': (20, 96),
-        'vent': (50, 96),
-        'window_size': 8,
-        'vent_size': 4}
-
-        class_trip, conc_array, out_mat, chance_nonzero = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.duration, self.seat_dict, loc_params=temp_loc) # replace default with selected
-        self.conc_heat(class_trip, conc_array, out_mat, chance_nonzero)
-        self.chance_nonzero = chance_nonzero
-        # print(chance_nonzero, 'more than none?')
-        self.conc_array = conc_array
-        self.class_trips.append(class_trip)
-        # print('model_run start')
-        plt.figure(figsize=(5,4))#, dpi=300)
-        plt.gcf().set_size_inches(5,4)
-        # plt.gcf().set_size_inches(5,4)
-        # ax = plt.gca()
-        pd.Series(class_trip).plot.kde(lw=2, c='r')
-        plt.title('Density estimation of exposure')
-        # plt.xlim(0, .004)
-        # print(plt.xticks())
-
-        # set x ticks
-        temp_x = np.array(plt.xticks()[0])
-        str_x = np.array([str(round(int * 100, 2))+'%' for int in temp_x])
-        print(str_x)
-        plt.xticks(temp_x, str_x)
-
-        plt.ticklabel_format(axis="x")#, style="sci", scilimits=(0,0))
-
-        plt.yticks(np.arange(0, 3500, 700), np.arange(0, 3500, 700) / 3500)
-
-        ##### what the fuck do i do with this????####
-        # rescale y axis to be % based
-        plt.xlabel('Likelihood of exposure to infectious dose of particles                         ')
-        plt.ylabel('Density estimation of probability of occurrence')
-        plt.savefig('results/window_curve.png', dpi=300)
-        # plt.show()
-        print('model_run complete!')

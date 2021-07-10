@@ -19,7 +19,7 @@ def load_parameters(filepath):
     try:
         with open(filepath) as fp:
             parameter = json.load(fp)
-    except:
+    except FileNotFoundError:
         try:
             with open('../' + filepath) as fp:
                 parameter = json.load(fp)
@@ -491,7 +491,7 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
         seat_dict = load_parameters('config/small_classroom.json') ## TODO
         print('Left to be implemented: Library, Sports, Gym, Theatre')
     flow_seating = {key: value for key, value in seat_dict.items() if int(key) < n_students}
-    print(flow_seating, 'flow')
+    # print(flow_seating, 'flow')
     # initialize model run data storage
     who_infected_class = {str(i): 0 for i in range(len(flow_seating.keys()))}
     init_inf_dict = who_infected_class.copy()
@@ -542,6 +542,12 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
 
     # print(concentration_, 'concentration')
     run_average_array = []
+    print('number of runs ' + str(n_sims))
+    print(flow_seating, 'flow seats')
+
+    # # TEMP:
+    n_sims = 1
+
     for run in range(n_sims):
         # initialize student by random selection# initial
         initial_inf_id = np.random.choice(list(who_infected_class.keys()))
@@ -567,6 +573,7 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
             # iterate through students
             # print(seat_dict.keys())
             for student_id in flow_seating.keys():
+                print('id ', str(student_id), type(student_id))
                 if student_id != initial_inf_id:
                     # masks wearing %
                     cwd = os.getcwd()
@@ -578,12 +585,14 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
                         masks = np.random.choice([.1, 1], p=[mask, 1-mask])
 
                     x1, x2, y1, y2 = get_distance_class(flow_seating, student_id, initial_inf_id)
-                    distance = math.sqrt(((.3 * (x2 - x1))**2)+((.3 * (y2-y1))**2))
-                    chu_distance = 1 / (2.02 ** distance)
+                    distance = math.sqrt(((.3 * (x2 - x1))**2)+((.3 * (y2-y1))**2)) # in meters
+                    chu_distance = 1 / (2.02 ** distance) #
 
                     # for concentraion calculation
                     air_y, air_x = flow_seating[str(student_id)]
                     # print(student_id, 'id', air_x, air_y)
+
+                    print(distance, 'd')
 
                     # proxy for concentration
                     air_flow = concentration_[air_y][air_x]
@@ -608,12 +617,17 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
                 transmission_class_rates[id] = np.mean(temp_average_array[id])
     # takes average over all runs
     for id in flow_seating.keys():
-        averaged_all_runs[id] = np.mean(transmission_class_rates[id])
+        if len(transmission_class_rates[id]) > 0:
+            averaged_all_runs[id] = np.mean(transmission_class_rates[id])
 
     # average risk of >= 1 infection across all model runs
     if len(run_average_array) == 0:
         print('Sim failed')
-    run_avg_nonzero = np.mean(run_average_array)
+    if len(run_average_array) > 0:
+        run_avg_nonzero = np.mean(run_average_array)
+    else:
+        print('error: no run average? wtf...')
+    print(run_average_array)
     # print('initially infected counts', init_inf_dict)
     # OUTPUT AVERAGE LIKELIHOOD OF >= 1 INFECTION
     # print(n_students)
