@@ -8,7 +8,10 @@ import json
 import os
 import matplotlib.pyplot as plt
 
-sys.path.insert(0, 'config')
+if 'config' in sys.path:
+    print('config success')
+else:
+    sys.path.insert(0, 'config')
 # import from infection.py
 from infection import generate_infectivity_curves, plot_infectivity_curves, return_aerosol_transmission_rate
 
@@ -32,8 +35,8 @@ def load_parameters(filepath):
 large_class = load_parameters('config/large_classroom.json')
 
 small_class = load_parameters('config/small_classroom.json')
-print(os.getcwd(), '#############################################')
-print(os.listdir(), os.listdir('config'))
+# print(os.getcwd(), '#############################################')
+# print(os.listdir(), os.listdir('config'))
 select_dict = load_parameters('config/neighbor_logic.json')
 
 #
@@ -483,12 +486,16 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
     students: 28 or 56
 
     '''
+    # print('sim input', n_students, mask, n_sims, duration, initial_seating, loc_params)
+
+
     if initial_seating == "small":
         seat_dict = load_parameters('config/small_classroom.json')
     elif initial_seating == "large":
         seat_dict = load_parameters('config/large_classroom.json')
     else:
         seat_dict = load_parameters('config/small_classroom.json') ## TODO
+        print('ERROR ')
         print('Left to be implemented: Library, Sports, Gym, Theatre')
     flow_seating = {key: value for key, value in seat_dict.items() if int(key) < n_students}
     # print(flow_seating, 'flow')
@@ -519,9 +526,18 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
 
     # print(dp, 'default')
     aerosol = return_aerosol_transmission_rate(aerosol_params['floor_area'], aerosol_params['mean_ceiling_height'], aerosol_params['air_exchange_rate'], aerosol_params['aerosol_filtration_eff'], aerosol_params['relative_humidity'], aerosol_params['breathing_flow_rate'], aerosol_params['exhaled_air_inf'], aerosol_params['max_viral_deact_rate'], aerosol_params['mask_passage_prob'])
-    # concentration_array, avg_matrix = concentration_distribution(n_steps, n_sims, seat_dict, direction, velocity, room_size='100x100')
-    # concentration_array, avg_matrix = concentration_distribution_()
-    # ACH, DIR, VEL, LOC
+    print('aerosol', aerosol)
+
+    #### Validate Aerosol
+    '''
+    Start Here!
+
+
+    '''
+
+
+    ########################
+
     concentration_array, vent_arr, min_arr, normed_arr = concentration_distribution_(aerosol_params['air_exchange_rate'], direction, velocity, flow_seating)
     out_matrix = np.array(np.zeros(shape=concentration_array[0].shape))
     max_val = 0
@@ -542,13 +558,21 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
 
     # print(concentration_, 'concentration')
     run_average_array = []
-    print('number of runs ' + str(n_sims))
-    print(flow_seating, 'flow seats')
 
-    # # TEMP:
-    n_sims = 1
+    # # # TEMP:
+    # n_sims = 1
+    print('Simulations running ...')
 
     for run in range(n_sims):
+        if run == int(n_sims / 4):
+            print('25% complete ...')
+        elif run == int(n_sims / 2):
+            print('50% complete ...')
+        elif run == 3 * int(n_sims / 4):
+            print('75% complete ...')
+        elif run == int(n_sims - 1):
+            print('99% complete ...')
+
         # initialize student by random selection# initial
         initial_inf_id = np.random.choice(list(who_infected_class.keys()))
         init_inf_dict[initial_inf_id] += 1
@@ -573,7 +597,7 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
             # iterate through students
             # print(seat_dict.keys())
             for student_id in flow_seating.keys():
-                print('id ', str(student_id), type(student_id))
+                # print('id ', str(student_id), type(student_id))
                 if student_id != initial_inf_id:
                     # masks wearing %
                     cwd = os.getcwd()
@@ -590,18 +614,16 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
 
                     # for concentraion calculation
                     air_y, air_x = flow_seating[str(student_id)]
-                    # print(student_id, 'id', air_x, air_y)
-
-                    print(distance, 'd')
 
                     # proxy for concentration
-                    air_flow = concentration_[air_y][air_x]
+                    air_flow = concentration_[int(10 * air_y)][int(10 * air_x)]
 
                     transmission = (init_infectivity * chu_distance * masks) + (air_flow * aerosol)
                     if transmission > 0.03:
                         # print('why')
+                        # print(air_flow, 'airflow', aerosol, 'aerosol' transmission, 'transmission')
+                        # print(init_infectivity, 'infecivity', chu_distance, 'chu', masks, 'mask')
                         transmission = .03
-                        # print(air_flow, 'af')# * aerosol)
                     # calculate transmissions
                     if np.random.choice([True, False], p=[transmission, 1-transmission]):
                         who_infected_class[student_id] += 1
@@ -614,7 +636,7 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
         # takes average over model run
         for id in flow_seating.keys():
             if len(temp_average_array[id]) > 0:
-                transmission_class_rates[id] = np.mean(temp_average_array[id])
+                transmission_class_rates[id] += np.mean(temp_average_array[id])
     # takes average over all runs
     for id in flow_seating.keys():
         if len(transmission_class_rates[id]) > 0:
@@ -627,8 +649,7 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
         run_avg_nonzero = np.mean(run_average_array)
     else:
         print('error: no run average? wtf...')
-    print(run_average_array)
-    # print('initially infected counts', init_inf_dict)
-    # OUTPUT AVERAGE LIKELIHOOD OF >= 1 INFECTION
-    # print(n_students)
+    # print('initially infected', init_inf_dict)
+
+    print('class_sim complete!')
     return averaged_all_runs, concentration_array, out_matrix, run_avg_nonzero

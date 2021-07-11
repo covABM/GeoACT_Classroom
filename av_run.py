@@ -56,8 +56,7 @@ def main(args):
 
 
 
-
-
+    ########## MAKE THESE USER INPUTS
 
 
     # update aerosol to results
@@ -75,6 +74,7 @@ def main(args):
 
     # update default to results
     default_data["class_length"] = int(duration)
+    default_data["duration"] = int(duration)
     default_data["number_students"] = int(number_of_students)
     default_data["mask_var"] = int(mask)
     default_data["window_var"] = windows

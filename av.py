@@ -6,7 +6,11 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-sys.path.insert(0, 'src')
+import seaborn as sns
+if 'src' in sys.path:
+    print('success')
+else:
+    sys.path.insert(0, 'src')
 from classroom import class_sim
 from infection import return_aerosol_transmission_rate
 
@@ -167,19 +171,22 @@ class user_viz():
 
         1 SETUP
         2 LOADING
-        3 CONCENTRATION + 2
-        4 HISTOGRAMS + 3
-        5 SCATTER/KDE + 2
-        6 T_RISK AVERAGE + 1
+        3 CONCENTRATION
+        4 MASK HISTOGRAM
+        5 AIRFLOW HISTOGRAM
+        6 SCATTER
+        7 RISK VS TIME
 
         '''
         # 1 SETUP
-        print('Model Running...')
+        print('Model Setup...')
 
         # class_sim()
 
         # run class model
         class_seating = self.generate_class_seating()
+
+        # seat var is room type
         # make varying input setup for ventilation
         ################# Make these into User Input
         w1 = (25, 0)
@@ -196,11 +203,17 @@ class user_viz():
         'window_size': 8,
         'vent_size': 4}
 
-        class_trip, conc_array, out_mat, chance_nonzero = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.duration, self.room_type, loc_params=temp_loc) # replace default with selected
+        class_trip, conc_array, out_mat, chance_nonzero = class_sim(n_students = int(self.students_var), mask = self.mask_var, n_sims = self.number_simulations, duration = self.duration, initial_seating = self.room_type, loc_params=temp_loc) # replace default with selected
 
-        print('HUH', chance_nonzero)
+        ### Validate using chance_nonzero
+        '''
+        Start here!
 
-        self.conc_heat(class_trip, conc_array, out_mat, chance_nonzero)
+
+        '''
+        ##################################
+
+        # self.conc_heat(class_trip, conc_array, out_mat, chance_nonzero)
         self.chance_nonzero = chance_nonzero
         # print(chance_nonzero, 'more than none?')
         self.conc_array = conc_array
@@ -224,7 +237,7 @@ class user_viz():
 
         plt.yticks(np.arange(0, 3500, 700), np.arange(0, 3500, 700) / 3500)
 
-        ##### what the fuck do i do with this????####
+        ##### This is temporary chill tf out ####
         # rescale y axis to be % based
         plt.xlabel('Likelihood of exposure to infectious dose of particles                         ')
         plt.ylabel('Density estimation of probability of occurrence')
@@ -235,36 +248,23 @@ class user_viz():
         # temp variables
         self.chance_nonzero = 0
         self.conc_array = 0
-        print('Seating...')
-        fig1, ax1 = plt.subplots()
-        seat_types = ['full', 'window', 'zigzag']
-        for s in seat_types:
-            bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.duration, s, self.window_var) # SEATING
-            pd.Series(bus_out_array[2]).plot.hist(bins=np.arange(0, 0.12, 0.001), alpha=.5, ax=ax1)
 
-
+        output_filepath = "output/class_simulation_" + str(self.students_var) + '_' + str(self.mask_var)+ '_' + str(self.number_simulations) + '_' + str(self.duration) + '_' + str(self.room_type) + '_' + str(self.window_var) # str(i) for i in [self.inputs]
 
 
 
         # 2 LOADING
         plt.figure()
 
-        output_filepath = "output/class_simulation"
-        # seating_chart = self.seat_var
-        #
-        # # seating chart ################################# TODO
-        # if seating_chart == "grid":
-        #     seat_dict = self.load_parameters()
-        # elif seating_chart == "circles":
-        #     seat_dict = self.load_parameters()
-        # else:
-        #     seat_dict = self.load_parameters()
-        #     print("ERROR")
+        if self.room_type == 'small':
+            self.seat_dict = load_parameters_av(filepath='config/small_classroom.json')
+        elif self.room_type == 'large':
+            self.seat_dict = load_parameters_av(filepath='config/large_classroom.json')
         # implement SEATING CHART OPTIONS ############################
 
-        # 3 CONCENTRATION + 2
+        # 3 CONCENTRATION + 1
 
-        print('Plot Concentration')
+        print('Plotting Concentration ...')
         x_arr = []
         y_arr = []
         for i in self.seat_dict.items(): ################### change seating
@@ -275,69 +275,70 @@ class user_viz():
         # Set up Figure
         fig, ax1 = plt.subplots()
         plt.matshow(out_mat, cmap="OrRd", norm=mpl.colors.LogNorm())
-        plt.arrow(-2,24,0,-26, head_width=0.2, head_length=0.2, fc='k', ec='k')
-        plt.scatter(x=x_arr, y=y_arr, s=5, c='k')
-        plt.gcf().set_size_inches(2,2)
-        plt.annotate(xy=(-1, -1), text='front', fontsize=5)
-        plt.annotate(xy=(-1, 24), text='back', fontsize=5)
-        plt.axis('off')
-
-        ax2 = fig.add_subplot(1,2,2)
-        ax2.matshow(out_mat, cmap="OrRd")#, norm=mpl.colors.LogNorm())
-        plt.arrow(-2,24,0,-26, head_width=0.2, head_length=0.2, fc='k', ec='k')
-        plt.scatter(x=x_arr, y=y_arr, s=5)
         plt.gcf().set_size_inches(2,2)
         plt.suptitle('Viral Concentration Heatmap', fontsize=7.5)
-        plt.annotate(xy=(-1, -1), text='front', fontsize=5)
-        plt.annotate(xy=(-1, 24), text='back', fontsize=5)
         plt.axis('off')
-        fig.text(.1, .01, 'Concentration of viral particles in the\nLeft heatmap is Log Normalized for visibility', fontsize=4)
-        plt.savefig(output_filepath + 'concentration.png', dpi=300)
+        plt.text(.1, .01, 'Sample proxy for air flow after ' + str(self.duration) + ' minutes', fontsize=4)
+        plt.savefig(output_filepath + '_concentration.png', dpi=300)
         plt.close()
 
+        # 4 MASK HISTOGRAM
 
-        # 4 HISTOGRAMS + 3
+        fig_mask, ax_mask = plt.subplots()
+        mask_values = [70, 80, 90, 100]
+        mask_legend = [str(i) + '%' for i in mask_values]
+        print('ml', mask_legend)
 
-        # HISTOGRAMS
-        # Hist 1 Seating
+        for mask_ in mask_values:
+            '''
+            Note: Masks as referred to here are in terms of face masks
 
-        plt.legend(['Full Occupancy Seating', 'Window Seats Only', 'Zigzag Seating'])
-        plt.xlabel('Mean likelihood of transmission at each step')
-        plt.ylabel('Number of students with this average risk of transmission')
-        seat_filepath = output_filepath + '_seating.png'
-        fig1.savefig(seat_filepath, dpi=300)
-        print('seating complete')
-        plt.close(fig1)
+            coding 'masks' will be noted when used
+            '''
+            class_trip_mask, conc_array_mask_mask, out_mat_mask, chance_nonzero_mask = class_sim(n_students = int(self.students_var), mask = self.mask_var, n_sims = self.number_simulations, duration = self.duration, initial_seating = self.room_type, loc_params=temp_loc) # replace default with selected
 
-        # Hist 2 Windows
+
+            sns.distplot(list(class_trip_mask[2].values()), ax=ax_mask, rug=True, kde=False, hist_kws={"histtype": "step", "linewidth": 3, "alpha": 1})
+
+        fig_mask.savefig(output_filepath + '_masks.png', dpi=300)
+
+        # 5 AIRFLOW HISTOGRAM
+
+
+
+        # 6 SCATTER
+        # 7 RISK VS TIME
+
+
+
         '''
         TODO:
-        Dynamic X minmax
+        All plots
         '''
 
 
-        print('Windows...')
-        fig2, ax2 = plt.subplots()
-        window_types = [0, 6]
-        win_out_df = pd.DataFrame(columns=window_types)
-        temp = 0.051
-        temp_step = 0.001
+        # print('Windows...')
+        # fig2, ax2 = plt.subplots()
+        # window_types = [0, 6]
+        # win_out_df = pd.DataFrame(columns=window_types)
+        # temp = 0.051
+        # temp_step = 0.001
 
         # add dynamic x range ToDo
-
-        for w in window_types:
-            bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.duration, self.seat_var, w) # WINDOW
-            x_range = [.051, .102, .153, .204]
-
-            ## 7/4 TODO: why is it all going wrong
-
-
-            for i in range(len(x_range)):
-                if x_range[i] < max(bus_out_array[2].values()):
-                    pass
-                else:
-                    temp = x_range[i]
-                    temp_step = 0.001 * (i + 1)
+        #
+        # for w in window_types:
+        #     bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = class_sim(int(self.students_var), self.mask_var, self.number_simulations, self.duration, self.seat_var, w) # WINDOW
+        #     x_range = [.051, .102, .153, .204]
+        #
+        #     ## 7/4 TODO: why is it all going wrong
+        #
+        #
+        #     for i in range(len(x_range)):
+        #         if x_range[i] < max(bus_out_array[2].values()):
+        #             pass
+        #         else:
+        #             temp = x_range[i]
+        #             temp_step = 0.001 * (i + 1)
 
 
             # TODO: Check all values of KDE are positive
@@ -348,37 +349,37 @@ class user_viz():
             ###############################################
 
             # SEABORN
-            sns.distplot(list(bus_out_array[2].values()), ax=ax2, rug=True, kde=False, hist_kws={"histtype": "step", "linewidth": 3, "alpha": 1})
+            # sns.distplot(list(bus_out_array[2].values()), ax=ax2, rug=True, kde=False, hist_kws={"histtype": "step", "linewidth": 3, "alpha": 1})
 
 
-        fig2.legend(['Windows Closed', 'Windows Open 6 Inches'])
-        plt.xlabel('Mean likelihood of transmission at each step')
-        plt.ylabel('Number of students with this average risk of transmission')
-        seat_filepath_2 = output_filepath + '_windows.png'
-        fig2.savefig(seat_filepath_2, dpi=300)
-        plt.close(fig2)
-        print('Windows complete!')
+        # fig2.legend(['Windows Closed', 'Windows Open 6 Inches'])
+        # plt.xlabel('Mean likelihood of transmission at each step')
+        # plt.ylabel('Number of students with this average risk of transmission')
+        # seat_filepath_2 = output_filepath + '_windows.png'
+        # fig2.savefig(seat_filepath_2, dpi=300)
+        # plt.close(fig2)
+        # print('Windows complete!')
 
         # Hist 3 Masks
 
-        print('Masks...')
-        fig3 = plt.figure(3)
-        mask_amount = [1, .9, .8, .7]
-        print('start masks')
-        colorlist = ['blue', 'green', 'yellow', 'red']
-        count_ = 0
-
-        for m in mask_amount:
-            bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = class_sim(int(self.students_var), m, self.number_simulations, self.duration, self.seat_var, self.window_var) # SEATING
-            pd.Series(bus_out_array[2]).plot.hist(bins=np.arange(0, 0.056, 0.001), alpha=.5, color=colorlist[count_])
-            count_ += 1
-        plt.legend(['100% Mask compliance', '90% Mask compliance', '80% Mask compliance', '70% Mask compliance'])
-        plt.xlabel('Mean likelihood of transmission at each step')
-        plt.ylabel('Number of students with this average risk of transmission')
-        seat_filepath_3 = output_filepath + '_masks.png'
-        fig3.savefig(seat_filepath_3, dpi=300)
-        plt.close(fig3)
-        print('Masks complete!')
+        # print('Masks...')
+        # fig3 = plt.figure(3)
+        # mask_amount = [1, .9, .8, .7]
+        # print('start masks')
+        # colorlist = ['blue', 'green', 'yellow', 'red']
+        # count_ = 0
+        #
+        # for m in mask_amount:
+        #     bus_out_array, conc_array, out_mat, chance_nonzero, avg_mat = class_sim(int(self.students_var), m, self.number_simulations, self.duration, self.seat_var, self.window_var) # SEATING
+        #     pd.Series(bus_out_array[2]).plot.hist(bins=np.arange(0, 0.056, 0.001), alpha=.5, color=colorlist[count_])
+        #     count_ += 1
+        # plt.legend(['100% Mask compliance', '90% Mask compliance', '80% Mask compliance', '70% Mask compliance'])
+        # plt.xlabel('Mean likelihood of transmission at each step')
+        # plt.ylabel('Number of students with this average risk of transmission')
+        # seat_filepath_3 = output_filepath + '_masks.png'
+        # fig3.savefig(seat_filepath_3, dpi=300)
+        # plt.close(fig3)
+        # print('Masks complete!')
 
 
 

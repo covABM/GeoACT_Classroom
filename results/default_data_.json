@@ -1,1 +1,1 @@
-{"duration": 0, "room_size": 0, "room_type": "test", "number_students": 25, "mask_wearing_percent": 0, "windows": 0, "number_simulations": 100, "seating_choice": "test", "class_length": 60, "mask_var": 100, "window_var": "closed"}
+{"duration": 60, "room_size": 0, "room_type": "test", "number_students": 25, "mask_wearing_percent": 0, "windows": 0, "number_simulations": 100, "seating_choice": "test", "class_length": 60, "mask_var": 100, "window_var": "closed"}
