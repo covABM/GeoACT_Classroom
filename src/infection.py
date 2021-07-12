@@ -8,8 +8,8 @@ import os
 ########## default transmission variables
 # setup default infection parameters
 
-floor_area = 1000  # ft2 # 11.4 m * 2.3 m * (m^2->ft^2) = 86.02 ~= 86 ft^2
-mean_ceiling_height = 4  # ft # 1.85 m -> ft = 6.06 ~= 6 ft
+floor_area = 1000  # ft2 #
+mean_ceiling_height = 12  # ft
 air_exchange_rate = 6  # /hr (air changes per hour (ACH)) #moving class mph average
 
 
