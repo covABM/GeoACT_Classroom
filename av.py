@@ -278,7 +278,7 @@ class user_viz():
         plt.gcf().set_size_inches(2,2)
         plt.suptitle('Viral Concentration Heatmap', fontsize=7.5)
         plt.axis('off')
-        plt.text(.1, .01, 'Sample proxy for air flow after ' + str(self.duration) + ' minutes', fontsize=4)
+        plt.text(.1, .01, '\nSample proxy for air flow after ' + str(self.duration) + ' minutes\n', fontsize=4)
         plt.savefig(output_filepath + '_concentration.png', dpi=300)
         plt.close()
 
