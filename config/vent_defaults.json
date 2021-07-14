@@ -1,0 +1,6 @@
+{
+  "outdoor_ach": "temp",
+  "MERV_rating": "temp",
+  "recirculation_rate": "temp",
+  "relative_humidity": "temp"
+}

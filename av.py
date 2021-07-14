@@ -17,6 +17,8 @@ from infection import return_aerosol_transmission_rate
 def load_parameters_av(filepath):
     '''
     Loads input and output directories
+
+    Handles script running anywhere (terminal/notebook/etc...)
     '''
     try:
         with open(filepath) as fp:
@@ -30,13 +32,99 @@ def load_parameters_av(filepath):
                 parameter = json.load(fp)
     return parameter
 
-
-
 class user_viz():
-    def __init__(self, parent=None):
+    def __init__(self, targets, parent=None):
+        '''
+        Generate local instance of room based on user and default inputs
+
+        TODO list:
+        Improve Seating Chart and assignment for n students
+        More classroom customization
+
+
+        Make input from user not just default
+
+        '''
         super(user_viz, self).__init__()
-        # separate input params
         self.input_params = load_parameters_av(filepath='results/default_data_.json')
+
+        # Simulation Parameters
+        self.simulation_defaults = load_parameters_av(filepath='config/simulation_defaults.json')
+        print(self.simulation_defaults, 'sim_defaults')
+
+        # Setup
+        self.room_type = self.simulation_defaults["setup"]["room_type"] 
+        self.age_group = self.simulation_defaults['setup']['age_group']
+        self.number_of_students = self.simulation_defaults["setup"]["num_students"]
+        self.number_of_adults = self.simulation_defaults["setup"]["num_adults"]
+
+        # Duration
+        self.mins_per_event = self.simulation_defaults["duration"]["mins_per_event"]
+        self.events_per_day = self.simulation_defaults["duration"]["events_per_day"]
+        self.days_per_sim = self.simulation_defaults["duration"]["days_per_sim"]
+
+        # Room Parameters
+        self.room_defaults = load_parameters_av(filepath='config/room_defaults.json')
+        # Type
+        self.room_area = self.room_defaults[self.room_type]["area"]
+        self.room_height = self.room_defaults[self.room_type]
+        self.vent_locations = self.room_defaults[self.room_type]
+        self.window_location = self.room_defaults[self.room_type]
+        if self.room_type == 'small':
+            self.seat_dict = load_parameters_av(filepath='config/small_classroom.json')
+        elif self.room_type == 'large':
+            self.seat_dict = load_parameters_av(filepath='config/large_classroom.json')
+        elif self.room_type in ['library', 'gym', 'sports practice', 'band room', 'theatre']:
+            self.seat_dict = load_parameters_av(filepath='config/small_classroom.json')
+            print('Other options under development- please reach out if you need them expedited!')
+        else:
+            print('Error! Problem loading seating')
+
+        # Ventilation Parameters
+        self.vent_defaults = load_parameters_av(filepath='config/vent_defaults.json')
+        self.outdoor_ach = self.vent_defaults["outdoor_ach"]
+        self.merv_type = self.vent_defaults["MERV_rating"]
+        self.recirc_rate = self.vent_defaults["recirculation_rate"]
+        self.relative_humidity = self.vent_defaults["relative_humidity"]
+
+        # Human Parameters
+        self.human_defaults = load_parameters_av(filepath='config/human_defaults.json')
+        # Behavior
+        self.indiv_breathing_rate = self.human_defaults["behavior"]["breathing_rate"]
+        self.respiratory_activity = self.human_defaults["behavior"]["respiratory_activity"]
+        self.student_mask_percent = self.human_defaults["behavior"]["student_mask_wearing_percent"] # Likelihood a given student is wearing their mask to its full effect
+        self.adult_mask_percent = self.human_defaults["behavior"]["adult_mask_wearing_percent"]
+        self.mask_protection = self.human_defaults["behavior"]["mask_protection"]
+        self.mean_breathing_rate = 'Take average of indiv_breathing_rate' # or just make this another default like Bazant
+
+        # Advanced Parameters
+        self.advanced_defaults = load_parameters_av(filepath='config/advanced_defaults.json')
+        # Constrained by lack of certainty
+        self.strain = self.advanced_defaults["constrained"]["strain"]
+        self.crit_drop_radius = self.advanced_defaults["constrained"]["crit_drop_radius"]
+        self.viral_deact_rate = self.advanced_defaults["constrained"]["viral_deact_rate"]
+        self.immunity_rate = self.advanced_defaults["constrained"]["immunity_rate"]
+        self.child_vax = self.advanced_defaults["constrained"]["child_vacc_rate"]
+        self.adult_vax = self.advanced_defaults["constrained"]["adult_vacc_rate"]
+
+        self.vaccination_effects = self.advanced_defaults["constrained"]["v"]
+        self.viral_infectivity = self.advanced_defaults["constrained"][""]# per virion
+        # Proxy for complex problem
+        self.chu_proxy_vars = self.advanced_defaults["constrained"][""]
+        self.chen_proxy_vars = self.advanced_defaults["constrained"][""]
+        self.user_units = self.advanced_defaults["constrained"][""]
+        self.initial_infected = self.advanced_defaults["constrained"][""]
+        # Calculated during simulation
+        self.indoor_WMR_ach = self.advanced_defaults["constrained"][""]
+
+        # Other Initializations
+
+
+
+
+
+
+
         self.room_size = self.input_params["room_size"] # in m
         self.students_var = self.input_params["number_students"]
         self.mask_var = self.input_params["mask_wearing_percent"]
@@ -50,15 +138,7 @@ class user_viz():
         self.class_trips = []
         if self.room_type == 'test':
             print('###################################################################')
-        if self.room_type == 'small':
-            self.seat_dict = load_parameters_av(filepath='config/small_classroom.json')
-        elif self.room_type == 'large':
-            self.seat_dict = load_parameters_av(filepath='config/large_classroom.json')
-        elif self.room_type in ['library', 'gym', 'sports practice', 'band room', 'theatre']:
-            self.seat_dict = load_parameters_av(filepath='config/small_classroom.json')
-            print('These activities are still being implemented- please reach out if you need them expedited')
-        else:
-            print('Error! Problem loading seating')
+
         # class dimensions
         # width and height are relatively standard: ergo area is 2.3 * L
         self.room_size = self.input_params["room_size"] # sq m
@@ -87,83 +167,26 @@ class user_viz():
 
     def generate_class_seating(self):
         '''
-        based on full vs zigzag vs edge
-        based on number of students
-        '''
+        Based on:
+        - class type
+        - seating chart
+        - number of students
+        - number of adults
 
+
+        Return dict of student_id: [x, y] for a good seating chart
+        Updates:
+        7/13 | assign using json file for small/large classrooms
+
+        ToDo: Improve seating chart options and generation
+        '''
         # evaluate temp based on # students
         num_kids = self.students_var
         temp_dict = {}
         for i in range(int(num_kids)):
             temp_dict[str(i)] = self.seat_dict[str(i)]
-        # print(temp)
-        # print(temp_dict)
         return temp_dict
 
-    def plot_class_seating(self):
-        '''
-        plot avg based on temp dict
-
-        TODO: background of class
-        '''
-        t_dict = self.generate_class_seating()
-        x_arr = []
-        y_arr = []
-        # print('class_seat_figure')
-        plt.figure(figsize=(2,2))
-        plt.gcf().set_size_inches(2,2)
-        # plt.gcf().set_size_inches(2,2)
-        for i in t_dict.items():
-            x_arr.append(i[1][1])
-            y_arr.append(i[1][0])
-        # im = plt.imread('results/class_img.png')
-        # plt.imshow(im)
-        plt.title('Approximate Seating Chart', fontsize=7)
-        plt.xticks(np.array([1.2, 1.8, 2.2, 3.8, 4.2, 4.8]))
-        plt.yticks(np.arange(-.5, 23.5, 1))
-        plt.grid(True)
-        # plt.tick_params(axis='both', left='off', top='off', right='off', bottom='off', labelleft='off', labeltop='off', labelright='off', labelbottom='off')
-        plt.scatter(x=x_arr, y=y_arr)#, marker='_')
-        plt.xticks(c='w')
-        plt.yticks(c='w')
-        # plt.axis('off') # set axis to be blank
-        # plt.show()
-
-        plt.savefig('results/seating_plot.png', dpi=300)
-        print('plot seating complete!')
-
-        return
-
-    def conc_heat(self, class_seating, class_trip, conc_array, out_mat, chance_nonzero):
-        '''
-        average over model runs: out_matrix averages
-        '''
-        rot = mpl.transforms.Affine2D().rotate_deg(180)
-        fig = plt.figure()
-        ax1 = fig.add_subplot(1, 2, 1)
-        ax1.matshow(out_mat, cmap="OrRd", norm=mpl.colors.LogNorm())
-        plt.arrow(-2,24,0,-26, head_width=0.2, head_length=0.2, fc='k', ec='k')
-        plt.gcf().set_size_inches(2,2)
-        # plt.suptitle('Relative Airflow Heatmap', fontsize=7.5)
-        plt.annotate(xy=(-1, -1), text='front', fontsize=5)
-        plt.annotate(xy=(-1, 24), text='back', fontsize=5)
-        plt.axis('off')
-
-
-        ax2 = fig.add_subplot(1,2,2)
-        ax2.matshow(out_mat, cmap="OrRd")#, norm=mpl.colors.LogNorm())
-        plt.arrow(-2,24,0,-26, head_width=0.2, head_length=0.2, fc='k', ec='k')
-        plt.gcf().set_size_inches(2,2)
-        plt.suptitle('Relative Airflow Heatmap', fontsize=7.5)
-        plt.annotate(xy=(-1, -1), text='front', fontsize=5)
-        plt.annotate(xy=(-1, 24), text='back', fontsize=5)
-        # log scale vs regular scale + 'be not afraid'
-        plt.axis('off')
-        fig.text(.1, .01, 'These heatmaps show relative airflow within the cabin \nof the class in terms of its effect on concentration \nof COVID-19 Particles (averaged across 100 simulations)', fontsize=4)
-        plt.savefig('results/relative_airflow.png', dpi=300)
-
-        print('relative airflow complete!')
-        return
     # function to run model with user input
     def model_run(self):
         '''
@@ -176,6 +199,10 @@ class user_viz():
         5 AIRFLOW HISTOGRAM
         6 SCATTER
         7 RISK VS TIME
+
+        Scatterplot:
+        - Short vs Long range transmission rates (Y) over Distance (X)
+        - Short vs Long range transmission rate Means (Y) over time (X)
 
         '''
         # 1 SETUP
@@ -211,7 +238,6 @@ class user_viz():
 
 
         '''
-        ##################################
 
         # self.conc_heat(class_trip, conc_array, out_mat, chance_nonzero)
         self.chance_nonzero = chance_nonzero

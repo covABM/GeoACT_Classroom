@@ -528,9 +528,14 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
     aerosol = return_aerosol_transmission_rate(aerosol_params['floor_area'], aerosol_params['mean_ceiling_height'], aerosol_params['air_exchange_rate'], aerosol_params['aerosol_filtration_eff'], aerosol_params['relative_humidity'], aerosol_params['breathing_flow_rate'], aerosol_params['exhaled_air_inf'], aerosol_params['max_viral_deact_rate'], aerosol_params['mask_passage_prob'])
     print('aerosol', aerosol)
 
-    #### Validate Aerosol
     '''
-    Start Here!
+    Airborne transmission is calculated as:
+
+    max(short, long)
+    or
+    short + long
+
+    depending on mode (advanced)
 
 
     '''

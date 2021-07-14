@@ -1,0 +1,13 @@
+{
+  "setup": {
+    "room_type": "small",
+    "age_group": "<15 years",
+    "num_students": 25,
+    "num_adults": 1
+  },
+  "duration": {
+    "mins_per_event": 60,
+    "events_per_day": 3,
+    "days_per_sim": 5
+  }
+}

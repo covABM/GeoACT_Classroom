@@ -1,0 +1,14 @@
+{
+  "small": {
+    "area": 1000,
+    "height": 12,
+    "vent_locations": "temp",
+    "window_locations": "temp"
+  },
+ "large": {
+   "area": 2000,
+   "height": "temp",
+   "vent_locations": "temp",
+   "window_locations": "temp"
+ }
+}

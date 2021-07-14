@@ -1,0 +1,9 @@
+{
+  "behavior": {
+    "breathing_rate": "0.29",
+    "respiratory_activity": "temp",
+    "student_mask_wearing_percent":  "temp",
+    "adult_mask_wearing_percent": "temp",
+    "mask_protection": "temp"
+  }
+}

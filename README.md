@@ -1,53 +1,40 @@
-GeoACT
+# GeoACT Classroom Simulation
 
-Repo for classroom modeling and visualization
+Input Parameters:
+      Room:
+  A       Floor area
+  H       Height
+  Q       Outdoor Ach
+          MERV level
+  Qr      Recirculation rate
+          Humidity
+          Breathing Rate
 
-Installation instructions:
----
-## OUT OF DATE!! TODO
+      Human:
+  Qb      Breathing Rate
+          Respiratory Activity
+  M%      Mask wearing %
+  Ma%     Adult Mask %
+  Pm      Mask Protection
 
-clone repository (use git bash or Github Desktop)
-ensure package installations
+      Simulations:
+          Room Type   # Sets Default values for Room Parameters
+          Age group
+          Duration: Mins/Event
+          Events/day
+          Days/simulation
+          Num Students
+          Num Adults
 
-run python -m verify to test that repository is downloaded fully and correctly
+      Advanced:
+          Strain
+          Aerosol size cutoff
+          viral deactivation rate
+          Chu / Chen proxy
+          Vent distribution proxy
+          Vaccinated/Immune
+          Viral Infectivity
+          Units
+          Expected Symptom Dates
 
-
-Usage instructions:
-
-Open GUI: python -m run gui
-
-Select Parameter inputs:
-
-Model Type: [Bus, Classroom]
-
-Number of Students: [Depends on Model type]
-
-Percent wearing masks: [100%, 90%, 80%]
-
-Windows Open: inches
-
-Bus Route: dropdown of potential Bus Routes (and thus the bus size/type)
-
-Seating Chart Type:
-
-
-[Full, zigag, windows_only]
-
-Concentration_average = Proxy for calculating uneven viral spread within the room/bus
-
-Seating Chart Viz = hover
-
-Model Run?
-
-Previous Runs
-
-
-Advanced Parameters
-
-
-
-TODO:
-
-Prettify: Heatmaps, plots / time
-Methods according to SEIR-P
-Verify.py: make sure download went correctly
+# Local Install Instructions:

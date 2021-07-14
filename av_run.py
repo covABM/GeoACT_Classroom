@@ -1,14 +1,41 @@
 # imports
 import argparse
 import sys
-sys.path.insert(0, 'src')
+if 'src' not in sys.path:
+    sys.path.insert(0, 'src')
 from av import *
 import json
 
 def main(args):
     '''
-    args = airavata inputs
+    Steps:
+    1. load user input
+    2. create local instance of user_viz class with user input and defaults
+    3. call user_viz.model_run()
+
+    Filetree:
+    av.py        | general functions
+    classroom.py | generate concentration proxy & run through ABM
+    infection.py | individual infection helper
+
+    Updates:
+    7/13 | Cleaned input a little, met w/ Ilya
+
+
+    ToDo: make this into local user input
     '''
+
+
+
+
+
+
+
+
+
+
+
+
     with open('config/default.json') as f:
         default_data = json.load(f)
     with open('config/aerosol.json') as g:
@@ -23,7 +50,6 @@ def main(args):
     indoors = args.indoors # 1 if yes, 0 if no
     vent_loc = args.vent_locations # list of tuples
     window_loc = args.window_locations # list of xy tuples
-    # room_size = args.room_type
     num_sims_ = 100 # default
     mask_eff_ = .1 # default
     air_exchange_rate = aerosol_data['air_exchange_rate']
@@ -95,21 +121,74 @@ def main(args):
 
 
 
-def main_2():
+def main_2(args_):
     '''
     Run functions with new json inputs
     '''
 
     av_out = user_viz()
 
-    av_out.model_run()
+    av_out.model_run(args_)
 
     print('Simulation complete! Please check /output folder for output.')
 
     return
 
 if __name__ == '__main__':
+    '''
+    Input Parameters:
+        Room:
+    A       Floor area
+    H       Height
+    Q       Outdoor Ach
+            MERV level
+    Qr      Recirculation rate
+            Humidity
+            Breathing Rate
+
+        Human:
+    Qb      Breathing Rate 
+            Respiratory Activity
+    M%      Mask wearing %
+    Ma%     Adult Mask %
+    Pm      Mask Protection
+
+        Simulations:
+            Room Type   # Sets Default values for Room Parameters
+            Age group
+            Duration: Mins/Event
+            Events/day
+            Days/simulation
+            Num Students
+            Num Adults
+
+        Advanced:
+            Strain
+            Aerosol size cutoff
+            viral deactivation rate
+            Chu / Chen proxy
+            Vent distribution proxy
+            Vaccinated/Immune
+            Viral Infectivity
+            Units
+            Expected Symptom Dates
+
+
+
+    '''
     parser = argparse.ArgumentParser()
+
+    # Room Arguments
+
+
+    # Human Arguments
+
+    # Simulation Arguments
+
+    # Advanced Arguments
+
+
+
     parser.add_argument('-r', '--room_type', required=True)
     parser.add_argument('-c', '--duration', required=True)
     parser.add_argument('-n', '--num_students', required=True)
@@ -125,4 +204,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args)
-    main_2()
+    main_2(args)

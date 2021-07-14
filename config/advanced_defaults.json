@@ -1,0 +1,16 @@
+{
+  "constrained": {
+    "strain": "temp",
+    "crit_drop_radius": "temp",
+    "viral_deact_rate": "temp",
+    "immunity_rate": 0,
+    "child_vacc_rate": 0,
+    "adult_vacc_rate": 100
+  },
+  "chu_proxy_vars": {
+    "chu_distance": 2.02
+  },
+  "chen_proxy_vars": {
+    "chen_distance": "temp"
+  }
+}
