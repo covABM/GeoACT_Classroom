@@ -239,7 +239,6 @@ class user_viz():
 
         '''
 
-        # self.conc_heat(class_trip, conc_array, out_mat, chance_nonzero)
         self.chance_nonzero = chance_nonzero
         # print(chance_nonzero, 'more than none?')
         self.conc_array = conc_array
