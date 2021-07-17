@@ -123,7 +123,7 @@ class user_viz():
 
 
 
-
+        ## V below are outdated: Please Fix
 
         self.room_size = self.input_params["room_size"] # in m
         self.students_var = self.input_params["number_students"]
@@ -150,6 +150,8 @@ class user_viz():
     def load_parameters(self, filepath):
         '''
         Loads seating from input directories
+
+        :param filepath: path of json file to load
         '''
         # print(os.getcwd(), 'av_cwd')
         try:
@@ -172,14 +174,20 @@ class user_viz():
         - seating chart
         - number of students
         - number of adults
-
-
+        
         Return dict of student_id: [x, y] for a good seating chart
         Updates:
         7/13 | assign using json file for small/large classrooms
 
         ToDo: Improve seating chart options and generation
         '''
+        # create seats based on class type and seating chart
+
+        # assign places to students and adults
+
+        # return dict of {id: [x, y]}
+
+
         # evaluate temp based on # students
         num_kids = self.students_var
         temp_dict = {}
