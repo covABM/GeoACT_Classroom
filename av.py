@@ -11,7 +11,7 @@ if 'src' in sys.path:
     print('success')
 else:
     sys.path.insert(0, 'src')
-from classroom import class_sim
+from classroom import class_simulation
 from infection import return_aerosol_transmission_rate
 
 def load_parameters_av(filepath):
@@ -32,12 +32,13 @@ def load_parameters_av(filepath):
                 parameter = json.load(fp)
     return parameter
 
+
 class user_viz():
     def __init__(self, targets, parent=None):
         '''
         Generate local instance of room based on user and default inputs
 
-        TODO list:
+        ToDo list:
         Improve Seating Chart and assignment for n students
         More classroom customization
 
@@ -46,106 +47,63 @@ class user_viz():
 
         '''
         super(user_viz, self).__init__()
-        self.input_params = load_parameters_av(filepath='results/default_data_.json')
+
+        self.input_params = targets
 
         # Simulation Parameters
-        self.simulation_defaults = load_parameters_av(filepath='config/simulation_defaults.json')
-        print(self.simulation_defaults, 'sim_defaults')
-
-        # Setup
-        self.room_type = self.simulation_defaults["setup"]["room_type"] 
-        self.age_group = self.simulation_defaults['setup']['age_group']
-        self.number_of_students = self.simulation_defaults["setup"]["num_students"]
-        self.number_of_adults = self.simulation_defaults["setup"]["num_adults"]
-
-        # Duration
-        self.mins_per_event = self.simulation_defaults["duration"]["mins_per_event"]
-        self.events_per_day = self.simulation_defaults["duration"]["events_per_day"]
-        self.days_per_sim = self.simulation_defaults["duration"]["days_per_sim"]
-
-        # Room Parameters
-        self.room_defaults = load_parameters_av(filepath='config/room_defaults.json')
-        # Type
-        self.room_area = self.room_defaults[self.room_type]["area"]
-        self.room_height = self.room_defaults[self.room_type]
-        self.vent_locations = self.room_defaults[self.room_type]
-        self.window_location = self.room_defaults[self.room_type]
-        if self.room_type == 'small':
-            self.seat_dict = load_parameters_av(filepath='config/small_classroom.json')
-        elif self.room_type == 'large':
-            self.seat_dict = load_parameters_av(filepath='config/large_classroom.json')
-        elif self.room_type in ['library', 'gym', 'sports practice', 'band room', 'theatre']:
-            self.seat_dict = load_parameters_av(filepath='config/small_classroom.json')
-            print('Other options under development- please reach out if you need them expedited!')
-        else:
-            print('Error! Problem loading seating')
-
-        # Ventilation Parameters
-        self.vent_defaults = load_parameters_av(filepath='config/vent_defaults.json')
-        self.outdoor_ach = self.vent_defaults["outdoor_ach"]
-        self.merv_type = self.vent_defaults["MERV_rating"]
-        self.recirc_rate = self.vent_defaults["recirculation_rate"]
-        self.relative_humidity = self.vent_defaults["relative_humidity"]
+        # setup
+        self.room_type = self.input_params['room_type']
+        self.n_students = self.input_params['num_students']
+        self.n_initial_students = self.input_params['n_initial_students']
+        self.n_adults = self.input_params['num_adults']
+        self.n_sims = self.input_params['n_sims']
+        self.age_group = self.input_params['age_group']
+        # duration
+        self.mins_per_class = self.input_params['mins_per_class']
+        self.classes_per_day = self.input_params['classes_per_day']
+        self.days_per_simulation = self.input_params['days_per_simulation']
 
         # Human Parameters
-        self.human_defaults = load_parameters_av(filepath='config/human_defaults.json')
-        # Behavior
-        self.indiv_breathing_rate = self.human_defaults["behavior"]["breathing_rate"]
-        self.respiratory_activity = self.human_defaults["behavior"]["respiratory_activity"]
-        self.student_mask_percent = self.human_defaults["behavior"]["student_mask_wearing_percent"] # Likelihood a given student is wearing their mask to its full effect
-        self.adult_mask_percent = self.human_defaults["behavior"]["adult_mask_wearing_percent"]
-        self.mask_protection = self.human_defaults["behavior"]["mask_protection"]
-        self.mean_breathing_rate = 'Take average of indiv_breathing_rate' # or just make this another default like Bazant
+        self.mean_breathing_rate = self.input_params['breathing_rate']
+        self.respiratory_activity = self.input_params['respiratory_activity']
+        self.student_mask_percent = self.input_params['student_mask_percent']
+        self.adult_mask_percent = self.input_params['adult_mask_percent']
+        self.mask_protection_rate = self.input_params['mask_protection_rate']
+
+        # Room Parameters
+        self.floor_area = self.input_params['floor_area']
+        self.room_height = self.input_params['room_height']
+        self.vent_size = self.input_params['vent_size']
+        self.vent_locations = self.input_params['vent_locations']
+        self.window_size = self.input_params['window_size']
+        self.window_locations = self.input_params['window_locations']
+        self.door_size = self.input_params['door_size']
+        self.door_location = self.input_params['door_location']
+        self.seating_chart = self.input_params['seating_chart']
+
+        # Vent Parameters
+        self.ach_level = self.input_params['ach_level']
+        self.merv_level = self.input_params['merv_level']
+        self.recirc_rate = self.input_params['recirc_rate']
+        self.relative_humidity = self.input_params['relative_humidity']
 
         # Advanced Parameters
-        self.advanced_defaults = load_parameters_av(filepath='config/advanced_defaults.json')
-        # Constrained by lack of certainty
-        self.strain = self.advanced_defaults["constrained"]["strain"]
-        self.crit_drop_radius = self.advanced_defaults["constrained"]["crit_drop_radius"]
-        self.viral_deact_rate = self.advanced_defaults["constrained"]["viral_deact_rate"]
-        self.immunity_rate = self.advanced_defaults["constrained"]["immunity_rate"]
-        self.child_vax = self.advanced_defaults["constrained"]["child_vacc_rate"]
-        self.adult_vax = self.advanced_defaults["constrained"]["adult_vacc_rate"]
+        self.strain = self.input_params['strain']
+        self.crit_drop_radius = self.input_params['crit_droplet_radius']
+        self.viral_deact_rate = self.input_params['viral_deact_rate']
+        self.immunity_rate = self.input_params['immunity_rate']
+        self.child_vax_rate = self.input_params['child_vax_rate']
+        self.adult_vax_rate = self.input_params['adult_vax_rate']
 
-        self.vaccination_effects = self.advanced_defaults["constrained"]["v"]
-        self.viral_infectivity = self.advanced_defaults["constrained"][""]# per virion
-        # Proxy for complex problem
-        self.chu_proxy_vars = self.advanced_defaults["constrained"][""]
-        self.chen_proxy_vars = self.advanced_defaults["constrained"][""]
-        self.user_units = self.advanced_defaults["constrained"][""]
-        self.initial_infected = self.advanced_defaults["constrained"][""]
-        # Calculated during simulation
-        self.indoor_WMR_ach = self.advanced_defaults["constrained"][""]
+        # Calculated parameters
+        input_args = {
+            'floor_area': self.floor_area,
+            'room_height': self.room_height,
+            'air_exchange_rate': 0
+        }
 
-        # Other Initializations
+        self.aerosol_transmission_rate = return_aerosol_transmission_rate(input_args)
 
-
-
-
-
-        ## V below are outdated: Please Fix
-
-        self.room_size = self.input_params["room_size"] # in m
-        self.students_var = self.input_params["number_students"]
-        self.mask_var = self.input_params["mask_wearing_percent"]
-        self.window_var = self.input_params["windows"]
-        self.duration = self.input_params["duration"] #
-        self.number_simulations = self.input_params["number_simulations"]
-
-        self.input_params2 = load_parameters_av(filepath='results/aerosol_data_.json')
-        self.mask_eff = self.input_params2["mask_passage_prob"]
-        self.room_type = self.input_params2["room_type"]
-        self.class_trips = []
-        if self.room_type == 'test':
-            print('###################################################################')
-
-        # class dimensions
-        # width and height are relatively standard: ergo area is 2.3 * L
-        self.room_size = self.input_params["room_size"] # sq m
-        self.floor_area = self.input_params2["floor_area"]
-
-        # functions
-        self.relative_airflow = 'placeholder'
 
     def load_parameters(self, filepath):
         '''
@@ -185,14 +143,14 @@ class user_viz():
 
         # assign places to students and adults
 
-        # return dict of {id: [x, y]}
-
-
         # evaluate temp based on # students
+
         num_kids = self.students_var
         temp_dict = {}
         for i in range(int(num_kids)):
             temp_dict[str(i)] = self.seat_dict[str(i)]
+
+        
         return temp_dict
 
     # function to run model with user input
@@ -212,128 +170,204 @@ class user_viz():
         - Short vs Long range transmission rates (Y) over Distance (X)
         - Short vs Long range transmission rate Means (Y) over time (X)
 
+
+        Sim Variables
+        class_arguments = {
+        :param n_students:          number of students in each sim
+        :param n_initial:           number of initial infected students  
+        :param n_adults:            number of adults in each sim
+        :param mask:                likelihood of student having mask
+        :param n_sims:              number of simulations with new initial students 
+        :param duration_mins_step:  time step in minutes
+        :param duration_steps_day:  number of steps in a day
+        :param duration_days_sim:   number of days to simulate      
+        :param seating_chart:       (x,y) locations for student seating
+        }
+        v_d_arguments = {
+        :param window_locations:    (x,y,z) of window locations
+        :param window_size:         surface area of window
+        :param vent_locations:      (x,y,z) of vent locations
+        :param vent_size:           surface area of vent
+        :param door_locations:      (x,y,z) of door locations
+        :param door_size:           surface area of door
+        }
         '''
-        # 1 SETUP
-        print('Model Setup...')
-
-        # class_sim()
-
-        # run class model
-        class_seating = self.generate_class_seating()
-
-        # seat var is room type
-        # make varying input setup for ventilation
-        ################# Make these into User Input
-        w1 = (25, 0)
-        w2 = (75, 0)
-        door = (20, 96)
-        vent = (50, 96) ############### make slider for this maybe ##########
-        window_size = 8 # 40 centimeters diameter
-        vent_size = 4 # 20 centimeters diameter
-
-        temp_loc = {'w1': (25, 0),
-        'w2': (75, 0),
-        'door': (20, 96),
-        'vent': (50, 96),
-        'window_size': 8,
-        'vent_size': 4}
-
-        class_trip, conc_array, out_mat, chance_nonzero = class_sim(n_students = int(self.students_var), mask = self.mask_var, n_sims = self.number_simulations, duration = self.duration, initial_seating = self.room_type, loc_params=temp_loc) # replace default with selected
-
-        ### Validate using chance_nonzero
-        '''
-        Start here!
+        # update 7/18 
+        # 0 Variables
 
 
-        '''
+        # 1 SETUP + CALCULATED VARIABLES
 
-        self.chance_nonzero = chance_nonzero
-        # print(chance_nonzero, 'more than none?')
-        self.conc_array = conc_array
-        self.class_trips.append(class_trip)
-        # print('model_run start')
-        plt.figure(figsize=(5,4))#, dpi=300)
-        plt.gcf().set_size_inches(5,4)
-        # plt.gcf().set_size_inches(5,4)
-        # ax = plt.gca()
-        pd.Series(class_trip).plot.kde(lw=2, c='r')
-        plt.title('Density estimation of exposure')
-        # plt.xlim(0, .004)
-        # print(plt.xticks())
-
-        # set x ticks
-        temp_x = np.array(plt.xticks()[0])
-        str_x = np.array([str(round(int * 100, 2))+'%' for int in temp_x])
-        plt.xticks(temp_x, str_x)
-
-        plt.ticklabel_format(axis="x")#, style="sci", scilimits=(0,0))
-
-        plt.yticks(np.arange(0, 3500, 700), np.arange(0, 3500, 700) / 3500)
-
-        ##### This is temporary chill tf out ####
-        # rescale y axis to be % based
-        plt.xlabel('Likelihood of exposure to infectious dose of particles                         ')
-        plt.ylabel('Density estimation of probability of occurrence')
-        plt.savefig('results/window_curve.png', dpi=300)
-        # plt.show()
-        print('model_run complete!')
-
-        # temp variables
-        self.chance_nonzero = 0
-        self.conc_array = 0
-
-        output_filepath = "output/class_simulation_" + str(self.students_var) + '_' + str(self.mask_var)+ '_' + str(self.number_simulations) + '_' + str(self.duration) + '_' + str(self.room_type) + '_' + str(self.window_var) # str(i) for i in [self.inputs]
+        self.aerosol_filtration_eff = 0
+        self.critical_droplet_radius = 0
 
 
+        sim_arguments =   {
+            self.n_students,
+            self.n_adults,
+            self.student_mask_percent,
+            self.adult_mask_percent,
+            self.n_sims,
+            self.mins_per_class,
+            self.classes_per_day,
+            self.days_per_simulation,
+            self.seating_chart
+        }
+        v_d_arguments = {
+            self.window_locations,
+            self.window_size,
+            self.vent_locations,
+            self.vent_size,
+            self.door_location,
+            self.door_size
+        }
+        aerosol_arguments = {
+            self.mean_breathing_rate,
+            self.respiratory_activity,
+            self.floor_area, 
+            self.room_height, 
+            self.ach_level, 
+            self.aerosol_filtration_eff, 
+            self.relative_humidity, 
+            self.breathing_flow_rate,
+            self.exhaled_air_inf, 
+            self.max_viral_deact_rate, 
+            self.mask_passage_prob, 
+            self.max_aerosol_radius, 
+            self.primary_outdoor_air_fraction
+        }
 
-        # 2 LOADING
-        plt.figure()
+        # 2 USER SIMULATIONS
+        # output old: averaged_all_runs, concentration_array, out_matrix, run_avg_nonzero
+        output_list = class_simulation(sim_arguments, v_d_arguments, aerosol_arguments)
 
-        if self.room_type == 'small':
-            self.seat_dict = load_parameters_av(filepath='config/small_classroom.json')
-        elif self.room_type == 'large':
-            self.seat_dict = load_parameters_av(filepath='config/large_classroom.json')
-        # implement SEATING CHART OPTIONS ############################
+        # new
+        # output_list = class_simulation(class_arguments, v_d_arguments, aerosol_arguments)
 
-        # 3 CONCENTRATION + 1
+        # 3 DENSITY ESTIMATION OF EXPOSURE 
 
-        print('Plotting Concentration ...')
-        x_arr = []
-        y_arr = []
-        for i in self.seat_dict.items(): ################### change seating
-            x_arr.append(i[1][1])
-            y_arr.append(i[1][0] * 1.5 + 1) # seat fix
-        rot = mpl.transforms.Affine2D().rotate_deg(180)
 
-        # Set up Figure
-        fig, ax1 = plt.subplots()
-        plt.matshow(out_mat, cmap="OrRd", norm=mpl.colors.LogNorm())
-        plt.gcf().set_size_inches(2,2)
-        plt.suptitle('Viral Concentration Heatmap', fontsize=7.5)
-        plt.axis('off')
-        plt.text(.1, .01, '\nSample proxy for air flow after ' + str(self.duration) + ' minutes\n', fontsize=4)
-        plt.savefig(output_filepath + '_concentration.png', dpi=300)
-        plt.close()
 
         # 4 MASK HISTOGRAM
 
-        fig_mask, ax_mask = plt.subplots()
-        mask_values = [70, 80, 90, 100]
-        mask_legend = [str(i) + '%' for i in mask_values]
-        print('ml', mask_legend)
+        # 5 AIRFLOW HISTOGRAM
 
-        for mask_ in mask_values:
-            '''
-            Note: Masks as referred to here are in terms of face masks
+        # 6 SCATTER LRT vs SRT vs SRT
+        # infection rate vs distance
+        # infections rate avg vs time
+        # infection boundary of time vs distance
 
-            coding 'masks' will be noted when used
-            '''
-            class_trip_mask, conc_array_mask_mask, out_mat_mask, chance_nonzero_mask = class_sim(n_students = int(self.students_var), mask = self.mask_var, n_sims = self.number_simulations, duration = self.duration, initial_seating = self.room_type, loc_params=temp_loc) # replace default with selected
+        # 7 RISK VS TIME
 
 
-            sns.distplot(list(class_trip_mask[2].values()), ax=ax_mask, rug=True, kde=False, hist_kws={"histtype": "step", "linewidth": 3, "alpha": 1})
 
-        fig_mask.savefig(output_filepath + '_masks.png', dpi=300)
+
+
+
+        # # 1 SETUP
+        # print('Model Setup...')
+
+        # # class_sim()
+
+        # # run class model
+        # class_seating = self.generate_class_seating()
+
+        # # seat var is room type
+        # # make varying input setup for ventilation
+
+        # class_trip, conc_array, out_mat, chance_nonzero = class_sim(n_students = int(self.students_var), mask = self.mask_var, n_sims = self.number_simulations, duration = self.duration, initial_seating = self.room_type, loc_params=temp_loc) # replace default with selected
+
+        # ### Validate using chance_nonzero
+
+
+
+        # self.chance_nonzero = chance_nonzero
+        # # print(chance_nonzero, 'more than none?')
+        # self.conc_array = conc_array
+        # self.class_trips.append(class_trip)
+        # # print('model_run start')
+        # plt.figure(figsize=(5,4))#, dpi=300)
+        # plt.gcf().set_size_inches(5,4)
+        # # plt.gcf().set_size_inches(5,4)
+        # # ax = plt.gca()
+        # pd.Series(class_trip).plot.kde(lw=2, c='r')
+        # plt.title('Density estimation of exposure')
+        # # plt.xlim(0, .004)
+        # # print(plt.xticks())
+
+        # # set x ticks
+        # temp_x = np.array(plt.xticks()[0])
+        # str_x = np.array([str(round(int * 100, 2))+'%' for int in temp_x])
+        # plt.xticks(temp_x, str_x)
+
+        # plt.ticklabel_format(axis="x")#, style="sci", scilimits=(0,0))
+
+        # plt.yticks(np.arange(0, 3500, 700), np.arange(0, 3500, 700) / 3500)
+
+        # ##### This is temporary chill tf out ####
+        # # rescale y axis to be % based
+        # plt.xlabel('Likelihood of exposure to infectious dose of particles                         ')
+        # plt.ylabel('Density estimation of probability of occurrence')
+        # plt.savefig('results/window_curve.png', dpi=300)
+        # # plt.show()
+        # print('model_run complete!')
+
+        # # temp variables
+        # self.chance_nonzero = 0
+        # self.conc_array = 0
+
+        # output_filepath = "output/class_simulation_" + str(self.students_var) + '_' + str(self.mask_var)+ '_' + str(self.number_simulations) + '_' + str(self.duration) + '_' + str(self.room_type) + '_' + str(self.window_var) # str(i) for i in [self.inputs]
+
+
+
+        # # 2 LOADING
+        # plt.figure()
+
+        # if self.room_type == 'small':
+        #     self.seat_dict = load_parameters_av(filepath='config/small_classroom.json')
+        # elif self.room_type == 'large':
+        #     self.seat_dict = load_parameters_av(filepath='config/large_classroom.json')
+        # # implement SEATING CHART OPTIONS ############################
+
+        # # 3 CONCENTRATION + 1
+
+        # print('Plotting Concentration ...')
+        # x_arr = []
+        # y_arr = []
+        # for i in self.seat_dict.items(): ################### change seating
+        #     x_arr.append(i[1][1])
+        #     y_arr.append(i[1][0] * 1.5 + 1) # seat fix
+        # rot = mpl.transforms.Affine2D().rotate_deg(180)
+
+        # # Set up Figure
+        # fig, ax1 = plt.subplots()
+        # plt.matshow(out_mat, cmap="OrRd", norm=mpl.colors.LogNorm())
+        # plt.gcf().set_size_inches(2,2)
+        # plt.suptitle('Viral Concentration Heatmap', fontsize=7.5)
+        # plt.axis('off')
+        # plt.text(.1, .01, '\nSample proxy for air flow after ' + str(self.duration) + ' minutes\n', fontsize=4)
+        # plt.savefig(output_filepath + '_concentration.png', dpi=300)
+        # plt.close()
+
+        # # 4 MASK HISTOGRAM
+
+        # fig_mask, ax_mask = plt.subplots()
+        # mask_values = [70, 80, 90, 100]
+        # mask_legend = [str(i) + '%' for i in mask_values]
+        # print('ml', mask_legend)
+
+        # for mask_ in mask_values:
+        #     '''
+        #     Note: Masks as referred to here are in terms of face masks
+
+        #     coding 'masks' will be noted when used
+        #     '''
+        #     class_trip_mask, conc_array_mask_mask, out_mat_mask, chance_nonzero_mask = class_sim(n_students = int(self.students_var), mask = self.mask_var, n_sims = self.number_simulations, duration = self.duration, initial_seating = self.room_type, loc_params=temp_loc) # replace default with selected
+
+
+        #     sns.distplot(list(class_trip_mask[2].values()), ax=ax_mask, rug=True, kde=False, hist_kws={"histtype": "step", "linewidth": 3, "alpha": 1})
+
+        # fig_mask.savefig(output_filepath + '_masks.png', dpi=300)
 
         # 5 AIRFLOW HISTOGRAM
 
@@ -345,7 +379,7 @@ class user_viz():
 
 
         '''
-        TODO:
+        ToDo:
         All plots
         '''
 

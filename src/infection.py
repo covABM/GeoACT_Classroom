@@ -12,15 +12,11 @@ def generate_infectivity_curves():
     Temporal Dynamics in Viral Shedding
 
     Returns a list of useful variables:
-    s_l_s_symptom_countdown   | Symptom countdown: days until symptoms are expected
-    x_symptom_countdown       | X range for ^
-
-    s_l_s_infectivity_density |
-    x_infectivity             |
-
-    TODO:
-    chu_distance              | replaced by self.chu_proxy_vars
-
+   
+    :return s_l_s_symptom_countdown: 
+    :return x_symp_countdown:
+    :return s_l_s_infectivity_density:
+    :return x_infectivity:
     '''
     s_l_s_symptom_countdown = [0.6432659248014824, -0.07787673726582335, 4.2489459496009125]
     x_symptom_countdown = np.linspace(0, 17, 1000)
@@ -28,7 +24,7 @@ def generate_infectivity_curves():
     s_l_s_infectivity_density = [20.16693271833812, -12.132674385322815, 0.6322296057082886]
     x_infectivity = np.linspace(-10, 8, 19)
 
-    return [s_l_s_symptom_countdown, x_symptom_countdown, s_l_s_infectivity_density, x_infectivity, chu_distance]
+    return [s_l_s_symptom_countdown, x_symptom_countdown, s_l_s_infectivity_density, x_infectivity]
 
 def plot_infectivity_curves(in_array, plot=True):
     '''
@@ -76,31 +72,38 @@ def plot_infectivity_curves(in_array, plot=True):
     else:
         return infective_df
 
-def return_aerosol_transmission_rate(floor_area, room_height, air_exchange_rate, aerosol_filtration_eff, relative_humidity, breathing_flow_rate, exhaled_air_inf, max_viral_deact_rate, mask_passage_prob, max_aerosol_radius, primary_outdoor_air_fraction):
+def return_aerosol_transmission_rate(asol_args):
     '''
-    Room
-    floor_area, 
-    room_height, 
+    
+    
+    :param floor_area: 
+    :param room_height:
+    :param air_exchange_rate:
+    :param aerosol_filtration_eff:
+    :param relative_humidity:
+    :param breathing_flow_rate:
+    :param exhaled_air_inf:
+    :param max_viral_deact_rate:
+    :param mask_passage_prob:
+    :param max_aerosol_radius:
+    :param primary_outdoor_air_fraction:
 
-    Human
+    :methods as follows:
 
 
-    Simulation
-
-    Advanced
-
-
-    air_exchange_rate, 
-    aerosol_filtration_eff,   
-    relative_humidity, 
-
-    breathing_flow_rate, 
-    exhaled_air_inf, 
-    max_viral_deact_rate, 
-    mask_passage_prob, 
-    max_aerosol_radius, 
-    primary_outdoor_air_fraction
+    :return:
     '''
+    floor_area = asol_args['floor_area']
+    mean_ceiling_height = asol_args['room_height']
+    air_exchange_rate = asol_args['air_exchange_rate']
+    aerosol_filtration_eff = asol_args['aerosol_filtration_eff']
+    relative_humidity = asol_args['relative_humidity']
+    breathing_flow_rate = asol_args['breathing_flow_rate']
+    exhaled_air_inf = asol_args['exhaled_air_inf']
+    max_viral_deact_rate = asol_args['max_viral_deact_rate']
+    mask_passage_prob = asol_args['mask_passage_prob']
+    max_aerosol_radius = asol_args['max_aerosol_radius']
+    primary_outdoor_air_fraction = asol_args['primary_outdoor_air_fraction']
 
     mean_ceiling_height_m = mean_ceiling_height * 0.3048 #m3
     room_vol = floor_area * mean_ceiling_height  # ft3
@@ -116,3 +119,83 @@ def return_aerosol_transmission_rate(floor_area, room_height, air_exchange_rate,
     airb_trans_rate = ((breathing_flow_rate * float(mask_passage_prob)) ** 2) * exhaled_air_inf / (room_vol_m * conc_relax_rate)
 
     return airb_trans_rate #This is mean number of transmissions per hour between pair of infected / healthy individuals
+
+def fast_root(num, n):
+    '''
+    helper function to get nth root of a number
+
+    :param num: number to get root of
+    :param n: root to get
+
+    :return: nth root of num
+    '''
+    return (num ** (1 / n))
+
+def step_transmission(inf_id, other_id, srt):
+    '''
+    Primary Infection Function at each step
+
+    :param inf_id:      ID of infected individual
+    :param other_id:    student id of uninfected individual
+    :param srt:         return_aerosol_transmission_rate(self.inputs)
+
+    :var t_rate_by_hour: average # of infections per hour per infectious per susceptible
+    :var close_range_transmission:    transmission calculations for 'ballistic droplets' >= 100 microns
+    :var shared_room_transmission:    transmission calculations for 'aerosol droplets' < 100 microns
+    :var long_range_transmission:     transmission calculations for 'ballistic droplets >= 300 microns
+
+    :method as follows: 
+    crt = infectivity % * chu_proxy
+    srt = (mask pen ^ 2 * breathing rate * quanta emission rate) / 
+    lrt = 
+
+
+    t_rate_by_hour = crt + srt + lrt  
+    t_rate_by_step = (1 - (1 - 60thRoot(t_rate_by_hour))) 
+
+    :return infection_occurs:   other_id is exposed to an infectious dose at this step
+    :return caused_by:          string of cause of infection
+    '''
+    distance = 0 # function to find distance between two points
+
+    infect_baseline = inf_id # get BaseStudent with id = inf_id: return 
+
+    cause = '' # string to hold cause of infection
+    infection_occurs = False # set to True if infected
+
+    # close_range = chu proxy (eventually chen proxy)
+    chu_proxy = 1/(2.02 ** distance)
+    crt = chu_proxy * infect_baseline
+    crt_step = (1 - (1 - fast_root(crt, 60)))
+    crt_infect = np.random.choice([False, True], p=[1 - crt_step, crt_step])
+
+    # shared_room = bazant and bush aerosol t rate + vent proxy
+    # srt = srt # asol requires sim aerosol parameters
+    srt_step = (1 - (1 - fast_root(srt, 60)))
+    srt_infect = np.random.choice([False, True], p=[1 - srt_step, srt_step])
+
+    # long_range = chu proxy (eventually chen proxy)
+    lrt = chu_proxy * infect_baseline * .1 # scaling factor to account for larger particle radius
+    lrt_step = (1 - (1 - fast_root(lrt, 60)))
+    lrt_infect = np.random.choice([False, True], p=[1 - lrt_step, lrt_step])
+
+    # total transmission likelihood: 
+    t_rate_by_hour = crt + srt + lrt
+    # t_rate_by_step = (1 - (1 - fast_root(t_rate_by_hour, 60)))
+    t_rate_by_step = crt_step + srt_step + lrt_step
+    ## TODO: Which of the above is correct?
+
+    ###### Experiment with order of if statements
+    if crt_infect:
+        cause = 'close range transmission'
+        infection_occurs = True
+    elif srt_infect:
+        cause = 'shared room transmission'
+        infection_occurs = True
+    elif lrt_infect:
+        cause = 'long range transmission'
+        infection_occurs = True
+    else:
+        cause = 'no transmission'
+
+    return infection_occurs, cause

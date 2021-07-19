@@ -2,18 +2,99 @@
 import numpy as np
 import pandas as pd
 import math
+from param import parameterized
 from scipy import stats
 import sys
 import json
 import os
 import matplotlib.pyplot as plt
-
+import param
 if 'config' in sys.path:
     print('config success')
 else:
     sys.path.insert(0, 'config')
+
 # import from infection.py
 from infection import generate_infectivity_curves, plot_infectivity_curves, return_aerosol_transmission_rate
+
+
+class BaseStudent(param.Parameterized):
+    '''
+    student agent base class
+
+    :param student_id:              int     unique student ID number
+    :param x:                       float32 x coordinate
+    :param y:                       float32 y coordinate
+    :param z:                       float32 z coordinate # unused as of 7/18
+    :param initial:                 string  is this the initially infected student?
+    :param infectious:              boolean have they begun emitting infectious particles?
+    :param mask:                    boolean are they wearing a mask?
+    :param is_infected:             boolean initially susceptible student that has been infected at a previous step
+    :param indiv_breathing_rate:    float32 individual breathing rate
+    '''
+    student_id = param.Integer(default=0, doc='student id')
+    x = param.Number(default=0.0, bounds=(-1.0, 1.0))
+    y = param.Number(default=0.0, bounds=(-1.0, 1.0))
+    initial = param.Boolean(default=False)
+    infectious = param.Boolean(default=False)
+    mask = param.Boolean(default=False)
+    is_infected = param.Boolean(default=False)
+    indiv_breathing_rate = param.Number(default=0.0)
+
+class BaseClassroom(param.Parameterized):
+    '''
+    classroom agent base class
+
+    # input
+    :param n_students:          int     number of students in the classroom
+    :param n_infected:          int     number of initially infected students
+    :param n_adults:            int     number of adults in the classroom
+    :param floor_area:          int     room floor area in meters
+    :param room_height:         int     room height in meters
+    :param outdoor_ach:         float32 ach level outside the room
+    :param indoor_ach:
+    :param merv_rating:
+    :param recirc_rate:
+    :param vent_location:
+    :param vent_size:           surface area of vent
+    :param door_locations:      (x,y,z) of door locations
+    :param door_size:           surface area of door
+    
+    # calculated later
+    :param direction:           matrix flow direction
+    :param velocity:            matrix velocity
+    :param mean_breathing_rate  float32 mean breathing rate
+
+    ################# Make these into User Input
+    w1 = (25, 0)
+    w2 = (75, 0)
+    door = (20, 96)
+    vent = (50, 96) ############### make slider for this maybe ##########
+    window_size = 8 # 40 centimeters diameter
+    vent_size = 4 # 20 centimeters diameter
+
+    temp_loc = {'w1': (25, 0),
+    'w2': (75, 0),
+    'door': (20, 96),
+    'vent': (50, 96),
+    'window_size': 8,
+    'vent_size': 4}
+
+    '''
+
+    # TODO: setup defaults
+    floor_area = param.Number(default=10.0, bounds=(0.0, None), doc='floor area')
+    height = param.Number(default=1.0, bounds=(0.0, None), doc='height')
+    outdoor_ach = param.Number(default=0.0, bounds=(0.0, None), doc='outdoor air exchange rate')
+    indoor_ach = param.Number(default=2.0, bounds=(0.0, None), doc='baseline indoor ACH')
+    merv_rating = param.Number(default=0.0, bounds=(0.0, None), doc='merv rating')
+    recirc_rate = param.Number(default=0.0, bounds=(0.0, None), doc='recirculation rate')
+    vent_locations = param.Dict(default={"None": (0.0, 0.0)}, doc='ventilation locations')
+    vent_size = param.Number(default=0.0, bounds=(0.0, None), doc='ventilation size')
+    window_locations = param.Dict(default={"None": (0.0, 0.0)}, doc='window locations')
+    window_size = param.Number(default=0.0, bounds=(0.0, None), doc='window size')
+    door_locations = param.Dict(default={"None": (0.0, 0.0)}, doc='door locations')
+    door_size = param.Number(default=0.0, bounds=(0.0, None), doc='door size')
 
 def load_parameters(filepath):
     '''
@@ -22,13 +103,16 @@ def load_parameters(filepath):
     try:
         with open(filepath) as fp:
             parameter = json.load(fp)
+        print(filepath + ' load success')
     except FileNotFoundError:
         try:
             with open('../' + filepath) as fp:
                 parameter = json.load(fp)
+            print('../' + filepath + ' load success')
         except:
             with open('../../' + filepath) as fp:
                 parameter = json.load(fp)
+            print('../' + filepath + ' load success')
 
     return parameter
 
@@ -37,7 +121,6 @@ large_class = load_parameters('config/large_classroom.json')
 small_class = load_parameters('config/small_classroom.json')
 # print(os.getcwd(), '#############################################')
 # print(os.listdir(), os.listdir('config'))
-select_dict = load_parameters('config/neighbor_logic.json')
 
 #
 aerosol_params = load_parameters('results/aerosol_data_.json')
@@ -46,12 +129,14 @@ dp = load_parameters('results/default_data_.json')
 initial_spread = np.array([[0, 0, 0, .03, 0, 0, 0],[0, 0, .04, .1, .03, 0, 0],[0, .03, .1, .2, .1, .04, 0],[.03, .1, .2, .3, .2, .1, .03],[0, .04, .1, .2, .1, .03, 0],[0, 0, .03, .1, .04, 0, 0],[0, 0, 0, .03, 0, 0, 0]])
 
 
+
 def get_distance_class(student_pos, this_id, initial_id):
     x1, y1 = student_pos[initial_id]
     x2, y2 = student_pos[this_id]
     return x1, x2, y1, y2
 
 def get_incoming(x, y, old, class_flow_direction, class_flow_velocity):
+    select_dict = load_parameters('config/neighbor_logic.json')
     neighb = []
     count = 0
     x_max = old.shape[0] - 1
@@ -125,7 +210,7 @@ def air_effects(i, j, oldQ):
     # This is depracated as of 5/28
     return oldQ
 
-def initial_cough(init_x, init_y, initial_spread, old):
+def initial_conc_cough(init_x, init_y, initial_spread, old):
     '''
     Initially infected student distributing at each step to nearby
 
@@ -262,14 +347,14 @@ def distribute(new, ach, initial, dir_matrix, vel_matrix, loc):
 def concentration_distribution_(ach, direction_matrix, velocity_matrix, loc):
     first = np.zeros((100, 100))
     initial = 0
-    temp = initial_cough(25, 40, initial_spread, first)
+    temp = initial_conc_cough(25, 40, initial_spread, first)
     vent_, min_0 = distribute(temp, ach, initial, direction_matrix, velocity_matrix, loc)
     temp_arr_ = []
     vent_arr = []
     min_arr = []
     normed_arr = []
-    for i in range(180):
-        temp = initial_cough(25, 40, initial_spread, vent_)
+    for i in range(180): # sim duration
+        temp = initial_conc_cough(25, 40, initial_spread, vent_)
         vent_, min_i = distribute(temp, ach, initial, direction_matrix, velocity_matrix, loc)
         normed = normalize_(vent_)
         temp_arr_.append(temp)
@@ -277,6 +362,25 @@ def concentration_distribution_(ach, direction_matrix, velocity_matrix, loc):
         min_arr.append(min_i)
         normed_arr.append(normed)
     return temp_arr_, vent_arr, min_arr, normed_arr
+
+# out_matrix = np.array(np.zeros(shape=concentration_array[0].shape))
+#     max_val = 0
+#     for conc in range(len(concentration_array)):
+#         for y in range(concentration_array[conc].shape[0]):
+#             for x in range(concentration_array[conc].shape[1]):
+#                 out_matrix[y][x] += (concentration_array[conc][y][x] / len(concentration_array))
+#                 if  (concentration_array[conc][y][x] / len(concentration_array)) > max_val:
+#                     max_val =  (concentration_array[conc][y][x] / len(concentration_array))
+
+#     concentration_ = out_matrix
+#     num_errors = 0
+#     for conc in range(len(concentration_array)):
+#         for y in range(concentration_array[conc].shape[0]):
+#             for x in range(concentration_array[conc].shape[1]):
+#                 if out_matrix[y][x] < 0:
+#                     out_matrix[y][x] = 0
+#                     num_errors += 1
+#                 # out_matrix[y][x] = out_matrix[y][x] / max # is this necessary?
 
 def make_new_heat(old, class_flow_pos, class_flow_direction, class_flow_velocity, init_infected_ = None):
     '''
@@ -295,7 +399,7 @@ def make_new_heat(old, class_flow_pos, class_flow_direction, class_flow_velocity
     for i in range(len(old)):
         for j in range(len(old[i])):
             dist = math.sqrt(((initial_loc[0] - i)**2) + (initial_loc[1] - j)**2)
-            new_val = old[i][j] + (1/(2.02 ** dist)) # 1 quanta per step by distance
+            new_val = old[i][j] + (1/(2.02 ** dist)) # chu emission
             new[i][j] = new_val
 
             ##################################################
@@ -306,45 +410,50 @@ def make_new_heat(old, class_flow_pos, class_flow_direction, class_flow_velocity
             out[i][j] = air_val  #
     return out, init_infected_
 
-def concentration_distribution(num_steps, num_sims, class_flow_pos, class_flow_direction, class_flow_velocity, room_size):
+
+def make_velocity_distance(c_instance, v_d_arguments):
     '''
-    Simulate distribution of concentration after
-    30 steps
-    100 runs
-    random initial student/infectivity
+    This is a proxy function for the airflow rate at higher values
+    Allows for uneven distribution of viral particles in the room (i.e. Beyond Well-Mixed Room)
+
+    Other attempts exist with more complex models, but this is simple enough to demonstrate the basic idea for now
+    - 7/18 - BM
+
+    Input:
+    c_instance = BaseClass instance
+    
+    v_d_arguments = {
+    :param floor_area:          Ar          Area of the room
+    :param height:              H           Height of the room
+    :param window_locations:    [(), ()]    List of tuples for the locations of windows
+    :param window_size:         Aw          Surface area of the windows
+    :param vent_locations:      [(), ()]    List of tuples for the locations of ventilators
+    :param vent_size:           Av          Surface area of the ventilators
+    :param door_locations:      [(), ()]    List of tuples for the locations of doors
+    :param door_size:           Ad          Surface area of the doors
+    }
+
+    :method as follows:
+    1. generate a room as a matrix of 0s
+    2. at each timestep:
+        2.1. for each initial infected student, emit and disperse viral quanta proportionally to the timestep length
+        2.2. disperse the quanta in various directions according 
+
+    :viral quanta emission rate:
+    :viral infectiousness by mass:
+
+
+    :return direction: 
+    :return velocity:
+
+
+
+
+    old params:
+    window1, window2, door_location, vent_location, window_size, vent_size
     '''
-    array_size = [int(room_size.split('x')[0]), int(room_size.split('x')[1])]
-    nothings = np.zeros(array_size)
-    avg_array = nothings.copy()
-    temp, initial = make_new_heat(nothings, class_flow_pos, class_flow_direction, class_flow_velocity, init_infected_=None)
-    temp_array = []
 
-    for step in range(num_steps):
-        temp, initial = make_new_heat(temp, class_flow_pos, class_flow_direction, class_flow_velocity, init_infected_=initial)
-        temp_array.append(temp)
 
-    for i in range(len(temp_array)):
-        # timesteps
-        for y in range(len(temp_array[0])):
-            for x in range(len(temp_array[0][0])):
-                avg_array[y][x] += (temp_array[i][y][x] / len(temp_array))
-
-    # plt.subplot(1, 2, 1)
-    # directions = plt.matshow(class_flow_direction, cmap=plt.get_cmap("OrRd"))
-    #
-    # plt.subplot(1, 2, 2)
-    # velocity = plt.matshow(class_flow_velocity, cmap=plt.get_cmap("OrRd"))
-    # plt.axis('off')
-    # plt.savefig('results/direction_velocity.png', dpi=300)
-
-    plt.close()
-    plt.subplot()
-    plt.matshow(avg_array)
-    plt.savefig('results/temp.png', dpi=300)
-
-    return temp_array, avg_array
-
-def make_velocity_distance(window1, window2, door_location, vent_location, window_size, vent_size):
     # function describes: y such that slope(x) = y
     temp = [[0 for col in range(100)] for row in range(100)] # size of room in 10 cm blocks
     x1 =  range(100)
@@ -422,7 +531,7 @@ def make_velocity_distance(window1, window2, door_location, vent_location, windo
 
             # barriers
     direction = temp.copy() # get from temp var
-#     r1 = mpl.patches.Rectangle((vent_location[0], 96), 10, 3, color='lightblue')
+    #     r1 = mpl.patches.Rectangle((vent_location[0], 96), 10, 3, color='lightblue')
 
     ######################################### redo this for arbitrary width
     # velocity
@@ -475,108 +584,115 @@ def make_velocity_distance(window1, window2, door_location, vent_location, windo
                 blah[j][i] = 1
     velocity = blah.copy()
 
-
     return direction, velocity # and other useful variables
 
-def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): # do 1 trip with given params
+def classroom_simulation(sim_arguments, v_d_arguments, aerosol_arguments):
     '''
-    in:
-    mask %
-    windows up / down
-    students: 28 or 56
+    Primary Simulation Function
 
+    Inputs: 
+    sim_arguments = {
+    :param n_students:          number of students in each sim
+    :param n_initial:           number of initial infected students  
+    :param n_adults:            number of adults in each sim
+    :param mask:                likelihood of student having mask
+    :param n_sims:              number of simulations with new initial students 
+    :param duration_mins_step:  time step in minutes
+    :param duration_steps_day:  number of steps in a day
+    :param duration_days_sim:   number of days to simulate      
+    :param seating_chart:       (x,y) locations for student seating
+    }
+    v_d_arguments = {
+    :param window_locations:    (x,y,z) of window locations
+    :param window_size:         surface area of window
+    :param vent_locations:      (x,y,z) of vent locations
+    :param vent_size:           surface area of vent
+    :param door_locations:      (x,y,z) of door locations
+    :param door_size:           surface area of door
+    }
+    :method as follows:
+    # loop through n simulations ->
+    # d days in each simulation ->
+    # s steps in each day ->
+    # i infectious students -> 
+    # u uninfected students ->
+    # tranmission_rate_by_step_for_student_pair
+
+    --> mean number of infections
+
+
+    # output needed: 
+    1. input params (user + default + calculated)
+    2. 
+    3. density estimation of exposure rate
+    4. hist of mask wearing: y = num students, x = infection rate
+    5. hist of ventilation: y = num students, x = infection rate
+
+    6. scatter of transmission methods: infection rate vs distance
+    7. scatter of transmission methods: infection rate vs time
+    8. scatter of transmission methods: distance vs time with % thresholds for orders of magnitude
+
+
+
+    :return input_params: dictionary of input parameters
+    :return chance_nonzero:         chance that more than 0 students are infected
+    :return concentration_array:    array of concentration heatmaps for every step
+    :return t_avg_by_step:          array of average infection rate of all students by step
+    :return t_avg_by_day:           array of average infection rate of all students by day
+    :return t_avg_by_sim:           array of average infection rate of all students by sim
+
+    Needed Asol Params
+    aerosol_params['floor_area'], aerosol_params['mean_ceiling_height'],
+    aerosol_params['air_exchange_rate'], aerosol_params['aerosol_filtration_eff'], 
+    aerosol_params['relative_humidity'], aerosol_params['breathing_flow_rate'], 
+    aerosol_params['exhaled_air_inf'], aerosol_params['max_viral_deact_rate'], 
+    aerosol_params['mask_passage_prob']
     '''
-    # print('sim input', n_students, mask, n_sims, duration, initial_seating, loc_params)
-
-
-    if initial_seating == "small":
-        seat_dict = load_parameters('config/small_classroom.json')
-    elif initial_seating == "large":
-        seat_dict = load_parameters('config/large_classroom.json')
-    else:
-        seat_dict = load_parameters('config/small_classroom.json') ## TODO
-        print('ERROR ')
-        print('Left to be implemented: Library, Sports, Gym, Theatre')
-    flow_seating = {key: value for key, value in seat_dict.items() if int(key) < n_students}
-    # print(flow_seating, 'flow')
-    # initialize model run data storage
-    who_infected_class = {str(i): 0 for i in range(len(flow_seating.keys()))}
-    init_inf_dict = who_infected_class.copy()
-    n_steps = int(int(duration) / 5)
-    transmission_class_rates = {i: [] for i in flow_seating.keys()}
-    temp_rates = transmission_class_rates.copy()
-    averaged_all_runs = transmission_class_rates.copy()
-
-    #### Future: loc_params gives these from user input/ slider
-    w1 = (25, 0)
-    w2 = (75, 0)
-    door = (20, 96)
-    vent = (50, 96)
-    window_size = 8
-    vent_size = 4
-    ################################################3
-    direction, velocity = make_velocity_distance(w1, w2, door, vent, window_size, vent_size)
-
-    # get infective_df
+    # initialize variables
     temp = generate_infectivity_curves()
-    inf_df = plot_infectivity_curves(temp, plot= False)
-    sls_symp_count, x_symp_count, s_l_s_infectivity_density, x_infectivity, distance_multiplier = temp
-    l_shape, l_loc, l_scale = sls_symp_count
-    g_shape, g_loc, g_scale = s_l_s_infectivity_density
+    infectiousness_curves = plot_infectivity_curves(temp, plot=False)
+    student_dict = {}
+    student_loc = {}
+    # init students
+    for i in range(n_students):
+        # generate BaseStudent instance with 'initial' set to False
+        student_temp = BaseStudent(student_id=i, initial=False)
+        student_loc[i] = {'x': student_temp.x, 'y': student_temp.y, 'z': student_temp.z}
+        student_dict[i] = student_temp 
 
-    # print(dp, 'default')
-    aerosol = return_aerosol_transmission_rate(aerosol_params['floor_area'], aerosol_params['mean_ceiling_height'], aerosol_params['air_exchange_rate'], aerosol_params['aerosol_filtration_eff'], aerosol_params['relative_humidity'], aerosol_params['breathing_flow_rate'], aerosol_params['exhaled_air_inf'], aerosol_params['max_viral_deact_rate'], aerosol_params['mask_passage_prob'])
-    print('aerosol', aerosol)
+    ################## not working rn #########################3
+    for initial_ in range(n_initial):
+        np.random.choice(list(student_dict.keys()), p=list(student_dict.values()).count(True) / sim_arguments[n_students])
 
-    '''
-    Airborne transmission is calculated as:
+    class_instance = BaseClassroom() # store class_instance.distance and .velocity
+    # update class_instance with user input
 
-    max(short, long)
-    or
-    short + long
+    # make the below into a parameter of BaseClassroom?
+    direction, velocity = make_velocity_distance(class_instance, v_d_arguments)
 
-    depending on mode (advanced)
+    # make the below into a parameter of BaseClassroom?
+    aerosol = return_aerosol_transmission_rate(aerosol_arguments) 
+
+    # conc_dist vars = concentration_array, vent_arr, min_arr, normed_arr
+    airflow_proxy = concentration_distribution_(aerosol_params['air_exchange_rate'], direction, velocity, student_dict)
+
+    
 
 
-    '''
-
-
-    ########################
-
-    concentration_array, vent_arr, min_arr, normed_arr = concentration_distribution_(aerosol_params['air_exchange_rate'], direction, velocity, flow_seating)
-    out_matrix = np.array(np.zeros(shape=concentration_array[0].shape))
-    max_val = 0
-    for conc in range(len(concentration_array)):
-        for y in range(concentration_array[conc].shape[0]):
-            for x in range(concentration_array[conc].shape[1]):
-                out_matrix[y][x] += (concentration_array[conc][y][x] / len(concentration_array))
-                if  (concentration_array[conc][y][x] / len(concentration_array)) > max_val:
-                    max_val =  (concentration_array[conc][y][x] / len(concentration_array))
-
-    concentration_ = out_matrix
-    for conc in range(len(concentration_array)):
-        for y in range(concentration_array[conc].shape[0]):
-            for x in range(concentration_array[conc].shape[1]):
-                if out_matrix[y][x] < 0:
-                    out_matrix[y][x] = 0
-                # out_matrix[y][x] = out_matrix[y][x] / max
-
-    # print(concentration_, 'concentration')
     run_average_array = []
+    # loop through n simulations ->
+    for sim in range(class_arguments[n_sims]):
+        if sim == int(n_sims / 4):
+            print('25\% complete ...')
+        elif sim == int(n_sims / 2):
+            print('50\% complete ...')
+        elif sim == 3 * int(n_sims / 4):
+            print('75\% complete ...')
+        elif sim == int(n_sims - 1):
+            print('99\% complete ...')
+        #########################
 
-    # # # TEMP:
-    # n_sims = 1
-    print('Simulations running ...')
 
-    for run in range(n_sims):
-        if run == int(n_sims / 4):
-            print('25% complete ...')
-        elif run == int(n_sims / 2):
-            print('50% complete ...')
-        elif run == 3 * int(n_sims / 4):
-            print('75% complete ...')
-        elif run == int(n_sims - 1):
-            print('99% complete ...')
 
         # initialize student by random selection# initial
         initial_inf_id = np.random.choice(list(who_infected_class.keys()))
@@ -596,65 +712,57 @@ def class_sim(n_students, mask, n_sims, duration, initial_seating, loc_params): 
 
         run_chance_of_0 = 1
 
+        ######################
 
-        for step in range(n_steps): # infection calculated for 5-minute timesteps
-            # class trip 1way
-            # iterate through students
-            # print(seat_dict.keys())
-            for student_id in flow_seating.keys():
-                # print('id ', str(student_id), type(student_id))
-                if student_id != initial_inf_id:
-                    # masks wearing %
-                    cwd = os.getcwd()
-                    if isinstance(mask, str):
-                        mask_ = int(mask.split('%')[0]) / 100
-                        masks = np.random.choice([.1, 1], p=[mask_, 1-mask_])
-                    else:
-                        # print(mask, type(mask))
-                        masks = np.random.choice([.1, 1], p=[mask, 1-mask])
+        # d days in each simulation ->
+        for day in range(class_arguments[n_days]):
+            # s steps in each day ->
+            for step in range(class_arguments[n_steps]):
+                # i infectious students -> 
+                for initial_s in range(class_arguments[n_initial]):
+                    # u uninfected students ->
+                    # if initial is infectious: calculate pairwise transmission at this step
 
-                    x1, x2, y1, y2 = get_distance_class(flow_seating, student_id, initial_inf_id)
-                    distance = math.sqrt(((.3 * (x2 - x1))**2)+((.3 * (y2-y1))**2)) # in meters
-                    chu_distance = 1 / (2.02 ** distance) #
 
-                    # for concentraion calculation
-                    air_y, air_x = flow_seating[str(student_id)]
+                    # number of infections 
+                    pass
+                
+        print('100\% complete! Plotting output ...')
 
-                    # proxy for concentration
-                    air_flow = concentration_[int(10 * air_y)][int(10 * air_x)]
+    # output:
+    all_parameters = {
+        'user_params': {
+            'room': {
 
-                    transmission = (init_infectivity * chu_distance * masks) + (air_flow * aerosol)
-                    if transmission > 0.03:
-                        # print('why')
-                        # print(air_flow, 'airflow', aerosol, 'aerosol' transmission, 'transmission')
-                        # print(init_infectivity, 'infecivity', chu_distance, 'chu', masks, 'mask')
-                        transmission = .03
-                    # calculate transmissions
-                    if np.random.choice([True, False], p=[transmission, 1-transmission]):
-                        who_infected_class[student_id] += 1
-                    # if infected:
-                    run_chance_of_0 *= (1-transmission)
+            },
+            'human': {
 
-                    # output temp is for each step
-                    temp_average_array[student_id].append(transmission)
-        run_average_array.append(1 - run_chance_of_0) # add chance of nonzero to array
-        # takes average over model run
-        for id in flow_seating.keys():
-            if len(temp_average_array[id]) > 0:
-                transmission_class_rates[id] += np.mean(temp_average_array[id])
-    # takes average over all runs
-    for id in flow_seating.keys():
-        if len(transmission_class_rates[id]) > 0:
-            averaged_all_runs[id] = np.mean(transmission_class_rates[id])
+            },
+            'simulation': {
 
-    # average risk of >= 1 infection across all model runs
-    if len(run_average_array) == 0:
-        print('Sim failed')
-    if len(run_average_array) > 0:
-        run_avg_nonzero = np.mean(run_average_array)
-    else:
-        print('error: no run average? wtf...')
-    # print('initially infected', init_inf_dict)
+            },
+            'classroom': {
 
-    print('class_sim complete!')
-    return averaged_all_runs, concentration_array, out_matrix, run_avg_nonzero
+            },
+            'vent': {
+
+            },
+        },
+        'default_params': {
+
+        },
+        'calculated_params': {
+            'infectivity': 'temp'
+        }
+    }
+
+    # # output needed: 
+    # 1. input params (user + default + calculated)
+    # 2. 
+    # 3. density estimation of exposure rate
+    # 4. hist of mask wearing: y = num students, x = infection rate
+    # 5. hist of ventilation: y = num students, x = infection rate
+
+    # 6. scatter of transmission methods: infection rate vs distance
+    # 7. scatter of transmission methods: infection rate vs time
+    # 8. scatter of transmission methods: distance vs time with % thresholds for orders of magnitude
