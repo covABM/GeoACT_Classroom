@@ -620,7 +620,6 @@ def classroom_simulation(sim_arguments, v_d_arguments, aerosol_arguments):
 
     --> mean number of infections
 
-
     # output needed: 
     1. input params (user + default + calculated)
     2. 
@@ -632,31 +631,31 @@ def classroom_simulation(sim_arguments, v_d_arguments, aerosol_arguments):
     7. scatter of transmission methods: infection rate vs time
     8. scatter of transmission methods: distance vs time with % thresholds for orders of magnitude
 
-
-
     :return input_params: dictionary of input parameters
     :return chance_nonzero:         chance that more than 0 students are infected
     :return concentration_array:    array of concentration heatmaps for every step
     :return t_avg_by_step:          array of average infection rate of all students by step
     :return t_avg_by_day:           array of average infection rate of all students by day
     :return t_avg_by_sim:           array of average infection rate of all students by sim
-
-    Needed Asol Params
-    aerosol_params['floor_area'], aerosol_params['mean_ceiling_height'],
-    aerosol_params['air_exchange_rate'], aerosol_params['aerosol_filtration_eff'], 
-    aerosol_params['relative_humidity'], aerosol_params['breathing_flow_rate'], 
-    aerosol_params['exhaled_air_inf'], aerosol_params['max_viral_deact_rate'], 
-    aerosol_params['mask_passage_prob']
     '''
+    # intake variables
+
+
+
+
     # initialize variables
     temp = generate_infectivity_curves()
     infectiousness_curves = plot_infectivity_curves(temp, plot=False)
-    student_dict = {}
+    student_array = [BaseStudent(student_id = i, initial = False) for i in range(n_students)]
+
+    # init seating chart 
+
+
     student_loc = {}
     # init students
     for i in range(n_students):
         # generate BaseStudent instance with 'initial' set to False
-        student_temp = BaseStudent(student_id=i, initial=False)
+        student_array.add(BaseStudent(student_id=i, initial=False)
         student_loc[i] = {'x': student_temp.x, 'y': student_temp.y, 'z': student_temp.z}
         student_dict[i] = student_temp 
 
@@ -697,6 +696,10 @@ def classroom_simulation(sim_arguments, v_d_arguments, aerosol_arguments):
         # initialize student by random selection# initial
         initial_inf_id = np.random.choice(list(who_infected_class.keys()))
         init_inf_dict[initial_inf_id] += 1
+
+        for init_ in range(n_initial):
+            # replace 
+
         # initialize time until symptoms based on curve
         init_time_to_symp = int(np.round(stats.lognorm.rvs(l_shape, l_loc, l_scale, size=1)[0], 0))
         # fix overflow errors (unlikely but just in case)

@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import seaborn as sns
+import math 
 if 'src' in sys.path:
     print('success')
 else:
@@ -62,6 +63,7 @@ class user_viz():
         self.mins_per_class = self.input_params['mins_per_class']
         self.classes_per_day = self.input_params['classes_per_day']
         self.days_per_simulation = self.input_params['days_per_simulation']
+        self.well_mixed_room = self.input_params['well_mixed_room']
 
         # Human Parameters
         self.mean_breathing_rate = self.input_params['breathing_rate']
@@ -82,6 +84,19 @@ class user_viz():
         self.seating_chart = self.input_params['seating_chart']
 
         # Vent Parameters
+        if windows == 'closed':
+            air_exchange_rate = 2 # TESTING for windows closed
+        elif windows== 'mechanical':
+            air_exchange_rate = 4
+        elif windows=='open':
+            air_exchange_rate= 5
+        elif windows=='outdoors' or indoors == 0:
+            air_exchange_rate = 20
+        else:
+            print('inputs gone wrong, please advise')
+            air_exchange_rate = 6
+
+
         self.ach_level = self.input_params['ach_level']
         self.merv_level = self.input_params['merv_level']
         self.recirc_rate = self.input_params['recirc_rate']
@@ -134,24 +149,37 @@ class user_viz():
         - number of adults
         
         Return dict of student_id: [x, y] for a good seating chart
-        Updates:
-        7/13 | assign using json file for small/large classrooms
-
-        ToDo: Improve seating chart options and generation
-        '''
-        # create seats based on class type and seating chart
-
-        # assign places to students and adults
-
-        # evaluate temp based on # students
-
-        num_kids = self.students_var
-        temp_dict = {}
-        for i in range(int(num_kids)):
-            temp_dict[str(i)] = self.seat_dict[str(i)]
-
         
-        return temp_dict
+        grid = .2 -> .8
+
+
+
+
+
+        '''
+        # square room ezpz
+        max_width = math.sqrt(self.floor_area) * .8
+        min_width = math.sqrt(self.floor_area) * .2
+        max_length = math.sqrt(self.floor_area) * .8
+        min_length = math.sqrt(self.floor_area) * .2
+
+        num_seats_each_way = math.ceil(math.sqrt(n_students))
+
+        # gridspace:
+
+
+        # create seats based on class type and seating chart
+        if self.seating_chart == 'grid':
+            x_s = [x for x in range(min_width, max_width + 1, num_seats_each_way)]
+            y_s = [y for y in range(min_length, max_length + 1, num_seats_each_way)]
+            seats = {str(i): (x_s[i], y_s[i]) for i in range(n_students)}
+        elif self.seating_chart == 'circular':
+            pass
+        else:
+            print('please enter valid seating')
+            pass
+
+        return seats
 
     # function to run model with user input
     def model_run(self):
@@ -191,6 +219,23 @@ class user_viz():
         :param door_locations:      (x,y,z) of door locations
         :param door_size:           surface area of door
         }
+        aerosol_arguments = {
+            self.mean_breathing_rate,
+            self.respiratory_activity,
+            self.floor_area, 
+            self.room_height, 
+            self.ach_level, 
+            self.aerosol_filtration_eff, 
+            self.relative_humidity, 
+            self.breathing_flow_rate,
+            self.exhaled_air_inf, 
+            self.max_viral_deact_rate, 
+            self.mask_passage_prob, 
+            self.max_aerosol_radius, 
+            self.primary_outdoor_air_fraction
+        }
+
+        :return:
         '''
         # update 7/18 
         # 0 Variables

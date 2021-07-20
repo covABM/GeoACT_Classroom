@@ -47,52 +47,30 @@ def main(args):
 
 
 
-    with open('config/default.json') as f:
-        default_data = json.load(f)
-    with open('config/aerosol.json') as g:
-        aerosol_data = json.load(g)
+    # with open('config/default.json') as f:
+    #     default_data = json.load(f)
+    # with open('config/aerosol.json') as g:
+    #     aerosol_data = json.load(g)
 
 
 
     
 
-    floor_area = max(aerosol_data['floor_area'], 1000) # THIS IS DEFAULT WHAT SHOULD THE ROOM SIZE BE
-    room_type = args.room_type # string
-    duration = args.duration # in minutes
-    number_of_students = args.num_students # total occupancy
-    mask = args.mask_wearing # in %
-    windows = args.windows # string : see below
-    indoors = args.indoors # 1 if yes, 0 if no
-    vent_loc = args.vent_locations # list of tuples
-    window_loc = args.window_locations # list of xy tuples
-    num_sims_ = 100 # default
-    mask_eff_ = .1 # default
-    air_exchange_rate = aerosol_data['air_exchange_rate']
+    # floor_area = max(aerosol_data['floor_area'], 1000) # THIS IS DEFAULT WHAT SHOULD THE ROOM SIZE BE
+    # room_type = args.room_type # string
+    # duration = args.duration # in minutes
+    # number_of_students = args.num_students # total occupancy
+    # mask = args.mask_wearing # in %
+    # windows = args.windows # string : see below
+    # indoors = args.indoors # 1 if yes, 0 if no
+    # vent_loc = args.vent_locations # list of tuples
+    # window_loc = args.window_locations # list of xy tuples
+    # num_sims_ = 100 # default
+    # mask_eff_ = .1 # default
+    # air_exchange_rate = aerosol_data['air_exchange_rate']
 
-    if windows == 'closed':
-        air_exchange_rate = 2 # TESTING for windows closed
-    elif windows== 'mechanical':
-        air_exchange_rate = 4
-    elif windows=='open':
-        air_exchange_rate= 5
-    elif windows=='outdoors' or indoors == 0:
-        air_exchange_rate = 20
-    else:
-        print('inputs gone wrong, please advise')
-        air_exchange_rate = 6
+   
 
-    room_type_arg = '-r' #type of classroom
-    duration_arg = '-c'
-    # seating_chart_type_arg = '-s'
-    num_students_in_class = '-n'
-    mask_wearing_arg = '-m' # likelihood
-    windows_arg = '-w'
-    adults_arg = '-a'
-
-    indoors = '-i'
-    vent_locations = '-v'
-    window_locations = 'l'
-    room_type_ = '-s'
 
 
 
@@ -181,6 +159,7 @@ if __name__ == '__main__':
             Days/simulation
             Num Students
             Num Adults
+            Well Mixed Room ?
 
         Advanced:
             Strain
@@ -203,18 +182,20 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--room_type', type=str, default='small', help='Room Type: large or small')
     parser.add_argument('-ns', '--num_students', type=int, default=25, help='Number of Students in Class')
     parser.add_argument('-na', '--num_adults', type=int, default=1, help='Number of Adults in Class')
-    parser.add_argument('-a', '--age_group', type=str, default='adult', help='Age Group of students in simulation')
+    parser.add_argument('-a', '--age_group', type=str, default='<15 years', help='Age Group of students in simulation')
     # duration
     parser.add_argument('-mpc', '--mins_per_class', type=int, default=60, help='Number of minutes per class')
     parser.add_argument('-cpd', '--classes_per_day', type=int, default=3, help='Number of classes per day')
     parser.add_argument('-dps', '--days_per_simulation', type=int, default=5, help='Number of days per simulation')
+    parser.add_argument('-wmr', '--well_mixed_room', type=bool, default=False, help='True: Use Wells-Riley Well-Mixed Room Model; False: Include airflow proxy')
+
 
     # Human Arguments
     parser.add_argument('-qb', '--breathing_rate', type=int, default=0.29, help='Breathing Rate') 
-    parser.add_argument('-ra', '--respiratory_activity', type=str, default='seated', help='Respiratory Activity')
+    parser.add_argument('-ra', '--respiratory_activity', type=str, default='speaking', help='Respiratory Activity')
     parser.add_argument('-sm', '--student_mask_percent', type=int, default=100, help='Student mask wearing %')
     parser.add_argument('-am', '--adult_mask_percent', type=int, default=100, help='Adult mask wearing %')
-    parser.add_argument('-pm', '--mask_protection_rate', type=int, default=100, help='Mask Protection %')
+    parser.add_argument('-pm', '--mask_protection_rate', type=int, default=.1, help='Mask Protection %')
 
     # Room Arguments
     parser.add_argument('-fa', '--floor_area', type=int, default=1000, help='Floor Area') #  area in ft^2
