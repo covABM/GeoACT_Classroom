@@ -1,4 +1,5 @@
 # imports
+import math
 import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
@@ -24,9 +25,15 @@ def generate_infectivity_curves():
     s_l_s_infectivity_density = [20.16693271833812, -12.132674385322815, 0.6322296057082886]
     x_infectivity = np.linspace(-10, 8, 19)
 
-    return [s_l_s_symptom_countdown, x_symptom_countdown, s_l_s_infectivity_density, x_infectivity]
+    inf_params = {
+        's_l_s_symptom_countdown': s_l_s_symptom_countdown, 
+        'x_symptom_countdown': x_symptom_countdown, 
+        's_l_s_infectivity_density': s_l_s_infectivity_density, 
+        'x_infectivity': x_infectivity
+    }
+    return inf_params
 
-def plot_infectivity_curves(in_array, plot=True):
+def plot_infectivity_curves(inf_params, plot=True):
     '''
     plot our sampling process with 2 vertically stacked plots
 
@@ -42,9 +49,12 @@ def plot_infectivity_curves(in_array, plot=True):
     if plot:
         fig, ax = plt.subplots(1)
         fig2, ax2 = plt.subplots(1)
-    sls_symp_count, x_symp_count, s_l_s_infectivity_density, x_infectivity, distance_multiplier = in_array
+    sls_symp_count = inf_params['s_l_s_symptom_countdown']
+    x_symp_count = inf_params['x_symptom_countdown']
+    s_l_s_infectivity_d = inf_params['s_l_s_infectivity_density']
+    x_infectivity = inf_params['x_infectivity']
     l_shape, l_loc, l_scale = sls_symp_count
-    g_shape, g_loc, g_scale = s_l_s_infectivity_density
+    g_shape, g_loc, g_scale = s_l_s_infectivity_d
     countdown_curve = stats.lognorm(s=l_shape, loc=l_loc, scale=l_scale)
 
     infective_df = pd.DataFrame({'x': list(x_infectivity), 'gamma': list(stats.gamma.pdf(x_infectivity, a=g_shape, loc=g_loc, scale=g_scale))})
@@ -66,7 +76,7 @@ def plot_infectivity_curves(in_array, plot=True):
 
                 # Save just the portion _inside_ the second  axis's boundaries
         extent2 = ax2.get_window_extent().transformed(fig2.dpi_scale_trans.inverted())
-        fig2.savefig('Infectivity_Dynamics.png', dpi=300)
+        # fig2.savefig('Infectivity_Dynamics.png', dpi=300)
 
         return infective_df
     else:
@@ -93,6 +103,7 @@ def return_aerosol_transmission_rate(asol_args):
 
     :return:
     '''
+
     floor_area = asol_args['floor_area']
     mean_ceiling_height = asol_args['room_height']
     air_exchange_rate = asol_args['air_exchange_rate']
@@ -131,13 +142,17 @@ def fast_root(num, n):
     '''
     return (num ** (1 / n))
 
-def step_transmission(inf_id, other_id, srt):
+def minute_transmission(inf_id, other_id, base_srt, airflow_proxy, wmr, seats, mask_var, floor_area, initial_infect, distance):
     '''
     Primary Infection Function at each step
 
-    :param inf_id:      ID of infected individual
-    :param other_id:    student id of uninfected individual
-    :param srt:         return_aerosol_transmission_rate(self.inputs)
+    :param inf_id:          ID of infected individual
+    :param other_id:        student id of uninfected individual
+    :param base_srt:        Well Mixed Room shared room transmission
+    :param airflow_proxy:   Optional airflow proxy for uneven concentration of viral particles
+    :param wmr:             Well Mixed Room ?
+    :param seats:           dict of studentid: (x, y) coordinates of each student
+    :param mask_var:        Likelihood of student wearing mask
 
     :var t_rate_by_hour: average # of infections per hour per infectious per susceptible
     :var close_range_transmission:    transmission calculations for 'ballistic droplets' >= 100 microns
@@ -151,51 +166,64 @@ def step_transmission(inf_id, other_id, srt):
 
 
     t_rate_by_hour = crt + srt + lrt  
-    t_rate_by_step = (1 - (1 - 60thRoot(t_rate_by_hour))) 
+    t_rate_by_minute = (1 - (1 - 60thRoot(t_rate_by_hour))) 
 
     :return infection_occurs:   other_id is exposed to an infectious dose at this step
     :return caused_by:          string of cause of infection
     '''
-    distance = 0 # function to find distance between two points
+    # MASKS
 
-    infect_baseline = inf_id # get BaseStudent with id = inf_id: return 
+    # WMR  # function to find distance between two points
+
+
+    infect_baseline = initial_infect # get BaseStudent with id = inf_id: return 
 
     cause = '' # string to hold cause of infection
     infection_occurs = False # set to True if infected
 
+
     # close_range = chu proxy (eventually chen proxy)
     chu_proxy = 1/(2.02 ** distance)
     crt = chu_proxy * infect_baseline
-    crt_step = (1 - (1 - fast_root(crt, 60)))
-    crt_infect = np.random.choice([False, True], p=[1 - crt_step, crt_step])
+    crt_minute = (1 - fast_root(1-crt, 60))
+    crt_infect = np.random.choice([False, True], p=[1 - crt_minute, crt_minute])
 
     # shared_room = bazant and bush aerosol t rate + vent proxy
-    # srt = srt # asol requires sim aerosol parameters
-    srt_step = (1 - (1 - fast_root(srt, 60)))
-    srt_infect = np.random.choice([False, True], p=[1 - srt_step, srt_step])
+    if airflow_proxy == 0:
+        srt = base_srt
+    # else:
+    #     srt = base_srt * airflow_proxy[][] # get other_id's airflow_proxy
+
+    srt_minute = (1 - fast_root(1-srt, 60))
+    srt_infect = np.random.choice([False, True], p=[1 - srt_minute, srt_minute])
 
     # long_range = chu proxy (eventually chen proxy)
     lrt = chu_proxy * infect_baseline * .1 # scaling factor to account for larger particle radius
-    lrt_step = (1 - (1 - fast_root(lrt, 60)))
-    lrt_infect = np.random.choice([False, True], p=[1 - lrt_step, lrt_step])
+    lrt_minute = (1 - fast_root(1-lrt, 60))
+    lrt_infect = np.random.choice([False, True], p=[1 - lrt_minute, lrt_minute])
 
     # total transmission likelihood: 
     t_rate_by_hour = crt + srt + lrt
-    # t_rate_by_step = (1 - (1 - fast_root(t_rate_by_hour, 60)))
-    t_rate_by_step = crt_step + srt_step + lrt_step
-    ## TODO: Which of the above is correct?
+    t_rate_by_minute = crt_minute + srt_minute + lrt_minute
 
     ###### Experiment with order of if statements
     if crt_infect:
         cause = 'close range transmission'
         infection_occurs = True
-    elif srt_infect:
+    elif infection_occurs == False and srt_infect:
         cause = 'shared room transmission'
         infection_occurs = True
-    elif lrt_infect:
+    elif infection_occurs == False and lrt_infect:
         cause = 'long range transmission'
         infection_occurs = True
     else:
         cause = 'no transmission'
 
-    return infection_occurs, cause
+    t_rates = {
+        'crt_minute': crt_minute, 
+        'srt_minute': srt_minute, 
+        'lrt_minute': lrt_minute, 
+        't_rate_by_hour': t_rate_by_hour,
+        't_rate_by_minute': t_rate_by_minute
+    }
+    return infection_occurs, cause, t_rates

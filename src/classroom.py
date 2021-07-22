@@ -1,28 +1,19 @@
 # imports
 import numpy as np
 import pandas as pd
-import math
-from param import parameterized
+from param import *
 from scipy import stats
-import sys
 import json
-import os
 import matplotlib.pyplot as plt
 import param
-if 'config' in sys.path:
-    print('config success')
-else:
-    sys.path.insert(0, 'config')
-
 # import from infection.py
-from infection import generate_infectivity_curves, plot_infectivity_curves, return_aerosol_transmission_rate
-
+from src.infection import *
 
 class BaseStudent(param.Parameterized):
     '''
     student agent base class
 
-    :param student_id:              int     unique student ID number
+    :param id:              str     unique student ID number
     :param x:                       float32 x coordinate
     :param y:                       float32 y coordinate
     :param z:                       float32 z coordinate # unused as of 7/18
@@ -31,15 +22,19 @@ class BaseStudent(param.Parameterized):
     :param mask:                    boolean are they wearing a mask?
     :param is_infected:             boolean initially susceptible student that has been infected at a previous step
     :param indiv_breathing_rate:    float32 individual breathing rate
+    :param time_to_symptoms:        float32 time tosymptoms
+    :param infectivity:             float32 infectivity
     '''
-    student_id = param.Integer(default=0, doc='student id')
-    x = param.Number(default=0.0, bounds=(-1.0, 1.0))
-    y = param.Number(default=0.0, bounds=(-1.0, 1.0))
+    id = param.Integer(default=0, doc='student id')
+    x = param.Number(default=50, bounds=(5, 95))
+    y = param.Number(default=50, bounds=(5, 95))
     initial = param.Boolean(default=False)
     infectious = param.Boolean(default=False)
     mask = param.Boolean(default=False)
     is_infected = param.Boolean(default=False)
     indiv_breathing_rate = param.Number(default=0.0)
+    time_to_symptoms = param.Number(default=0.0)
+    infectivity = param.Number(default=0.0)
 
 class BaseClassroom(param.Parameterized):
     '''
@@ -63,29 +58,12 @@ class BaseClassroom(param.Parameterized):
     # calculated later
     :param direction:           matrix flow direction
     :param velocity:            matrix velocity
-    :param mean_breathing_rate  float32 mean breathing rate
-
-    ################# Make these into User Input
-    w1 = (25, 0)
-    w2 = (75, 0)
-    door = (20, 96)
-    vent = (50, 96) ############### make slider for this maybe ##########
-    window_size = 8 # 40 centimeters diameter
-    vent_size = 4 # 20 centimeters diameter
-
-    temp_loc = {'w1': (25, 0),
-    'w2': (75, 0),
-    'door': (20, 96),
-    'vent': (50, 96),
-    'window_size': 8,
-    'vent_size': 4}
-
     '''
 
     # TODO: setup defaults
-    floor_area = param.Number(default=10.0, bounds=(0.0, None), doc='floor area')
-    height = param.Number(default=1.0, bounds=(0.0, None), doc='height')
-    outdoor_ach = param.Number(default=0.0, bounds=(0.0, None), doc='outdoor air exchange rate')
+    floor_area = param.Number(default=1000, bounds=(1000, 4000), doc='floor area')
+    height = param.Number(default=12, bounds=(12, 24), doc='height')
+    outdoor_ach = param.Number(default=2, bounds=(2, 8), doc='outdoor air exchange rate')
     indoor_ach = param.Number(default=2.0, bounds=(0.0, None), doc='baseline indoor ACH')
     merv_rating = param.Number(default=0.0, bounds=(0.0, None), doc='merv rating')
     recirc_rate = param.Number(default=0.0, bounds=(0.0, None), doc='recirculation rate')
@@ -116,29 +94,9 @@ def load_parameters(filepath):
 
     return parameter
 
-large_class = load_parameters('config/large_classroom.json')
-
-small_class = load_parameters('config/small_classroom.json')
-# print(os.getcwd(), '#############################################')
-# print(os.listdir(), os.listdir('config'))
-
-#
-aerosol_params = load_parameters('results/aerosol_data_.json')
-dp = load_parameters('results/default_data_.json')
-
-initial_spread = np.array([[0, 0, 0, .03, 0, 0, 0],[0, 0, .04, .1, .03, 0, 0],[0, .03, .1, .2, .1, .04, 0],[.03, .1, .2, .3, .2, .1, .03],[0, .04, .1, .2, .1, .03, 0],[0, 0, .03, .1, .04, 0, 0],[0, 0, 0, .03, 0, 0, 0]])
-
-
-
-def get_distance_class(student_pos, this_id, initial_id):
-    x1, y1 = student_pos[initial_id]
-    x2, y2 = student_pos[this_id]
-    return x1, x2, y1, y2
-
 def get_incoming(x, y, old, class_flow_direction, class_flow_velocity):
     select_dict = load_parameters('config/neighbor_logic.json')
     neighb = []
-    count = 0
     x_max = old.shape[0] - 1
     y_max = old.shape[1] - 1
 
@@ -198,43 +156,35 @@ def get_incoming(x, y, old, class_flow_direction, class_flow_velocity):
         new_val = this_val
     return new_val
 
-def air_effects(i, j, oldQ):
+def initial_conc_cough(init_dict, old):
     '''
-    i, j: x y locations
-
-    oldQ: old quanta at that cube
-
-    get neighbors directions and magnitude
-    determine % in and % out
-    '''
-    # This is depracated as of 5/28
-    return oldQ
-
-def initial_conc_cough(init_x, init_y, initial_spread, old):
-    '''
-    Initially infected student distributing at each step to nearby
+    Initially infected student distributing at each step to nearby grid squares
 
     TODO: Include code to catch students being next to walls
 
-    TODO: Implement these as input variables
-    Current Assumptions:
-    Respiratory Activity = 2.04 quanta / ft^3
-    Breathing Rate = .29 ft^3 / min
+    :param init_x:
+    :param init_y:
+    :param old:
 
-
+    :return:
     '''
-    new = old.copy()
-    for i in range(len(initial_spread)):
-        for j in range(len(initial_spread[0])):
-            new[init_y + j - 3][init_x + i - 3] += initial_spread[i][j]
+    initial_spread = np.array([[0, 0, 0, .03, 0, 0, 0],[0, 0, .04, .1, .03, 0, 0],[0, .03, .1, .2, .1, .04, 0],[.03, .1, .2, .3, .2, .1, .03],[0, .04, .1, .2, .1, .03, 0],[0, 0, .03, .1, .04, 0, 0],[0, 0, 0, .03, 0, 0, 0]])
 
+
+    new = old.copy()
+    for init in init_dict.keys():
+        init_x = init_dict[init][0]
+        init_y = init_dict[init][1]
+        for i in range(len(initial_spread)):
+            for j in range(len(initial_spread[0])):
+                new[init_y + j - 3][init_x + i - 3] += initial_spread[i][j]
     return new
 
 def normalize_(matrix):
     '''
-    Make everything 0.01-1
+    :param matrix:
 
-    I dislike mpl vmin and vmax
+    :return: normalized matrix w/ <0 changed to 0
     '''
     max_ = 0
     new = np.zeros(matrix.shape)
@@ -242,6 +192,8 @@ def normalize_(matrix):
         for x in range(len(matrix[y])):
             if matrix[y][x] > max_:
                 max_ = matrix[y][x]
+            elif matrix[y][x] < 0:
+                matrix[y][x] = 0
     for y in range(len(matrix)):
         for x in range(len(matrix[y])):
             new[y][x] = matrix[y][x] / max_
@@ -257,11 +209,18 @@ def distribute(new, ach, initial, dir_matrix, vel_matrix, loc):
 
     near open window: TODO
 
+    ** moves viral particles around in the proxy @ each step
 
+    :param new:
+    :param ach:
+    :param initial:
+    :param dir_matrix:
+    :param vel_matrix:
+    :param loc:
+    :return:
     '''
     out = np.zeros(new.shape)
-    idx_ = str(initial)
-    init_x, init_y = loc[idx_]
+    # init_x, init_y = loc[initial]
     dir_ref = {"-1,1": 0,
            "0,1": 1,
            "1,1": 2,
@@ -344,17 +303,35 @@ def distribute(new, ach, initial, dir_matrix, vel_matrix, loc):
                         min_ = out[y + j][x + i]
     return out, min_
 
-def concentration_distribution_(ach, direction_matrix, velocity_matrix, loc):
+def concentration_distribution_(ach, direction_matrix, velocity_matrix, loc, init_dict):
+    '''
+    TODO: allow for conc_cough to be have > 1 initial infected
+    
+    :param ach:
+    :param direction_matrix:
+    :param velocity_matrix:
+    :param loc:
+    :param init_x:
+    :param init_y:
+
+    :return temp_arr_:
+    :return vent_arr_:
+    :return min_arr:
+    :return normed_arr:         Use this one
+    '''
+
+
     first = np.zeros((100, 100))
     initial = 0
-    temp = initial_conc_cough(25, 40, initial_spread, first)
+    
+    temp = initial_conc_cough(init_dict, first)
     vent_, min_0 = distribute(temp, ach, initial, direction_matrix, velocity_matrix, loc)
     temp_arr_ = []
     vent_arr = []
     min_arr = []
     normed_arr = []
     for i in range(180): # sim duration
-        temp = initial_conc_cough(25, 40, initial_spread, vent_)
+        temp = initial_conc_cough(init_dict, vent_)
         vent_, min_i = distribute(temp, ach, initial, direction_matrix, velocity_matrix, loc)
         normed = normalize_(vent_)
         temp_arr_.append(temp)
@@ -363,65 +340,16 @@ def concentration_distribution_(ach, direction_matrix, velocity_matrix, loc):
         normed_arr.append(normed)
     return temp_arr_, vent_arr, min_arr, normed_arr
 
-# out_matrix = np.array(np.zeros(shape=concentration_array[0].shape))
-#     max_val = 0
-#     for conc in range(len(concentration_array)):
-#         for y in range(concentration_array[conc].shape[0]):
-#             for x in range(concentration_array[conc].shape[1]):
-#                 out_matrix[y][x] += (concentration_array[conc][y][x] / len(concentration_array))
-#                 if  (concentration_array[conc][y][x] / len(concentration_array)) > max_val:
-#                     max_val =  (concentration_array[conc][y][x] / len(concentration_array))
-
-#     concentration_ = out_matrix
-#     num_errors = 0
-#     for conc in range(len(concentration_array)):
-#         for y in range(concentration_array[conc].shape[0]):
-#             for x in range(concentration_array[conc].shape[1]):
-#                 if out_matrix[y][x] < 0:
-#                     out_matrix[y][x] = 0
-#                     num_errors += 1
-#                 # out_matrix[y][x] = out_matrix[y][x] / max # is this necessary?
-
-def make_new_heat(old, class_flow_pos, class_flow_direction, class_flow_velocity, init_infected_ = None):
-    '''
-    1 minute step used to calculate concentration_distribution iteratively
-    '''
-    kids =list(class_flow_pos.keys())
-    if init_infected_ == None:
-        init_infected_ = np.random.choice(kids)
-    else:
-        init_infected_ = init_infected_
-
-    initial_loc = class_flow_pos[init_infected_]
-    new = old.copy()
-    out = old.copy()
-    # spatial
-    for i in range(len(old)):
-        for j in range(len(old[i])):
-            dist = math.sqrt(((initial_loc[0] - i)**2) + (initial_loc[1] - j)**2)
-            new_val = old[i][j] + (1/(2.02 ** dist)) # chu emission
-            new[i][j] = new_val
-
-            ##################################################
-    for i in range(len(new)):
-        for j in range(len(new[i])):
-            neighbor_val = get_incoming(i, j, new, class_flow_direction, class_flow_velocity)
-            air_val = air_effects(i, j, neighbor_val)
-            out[i][j] = air_val  #
-    return out, init_infected_
-
-
-def make_velocity_distance(c_instance, v_d_arguments):
+def make_velocity_distance(v_d_arguments):
     '''
     This is a proxy function for the airflow rate at higher values
     Allows for uneven distribution of viral particles in the room (i.e. Beyond Well-Mixed Room)
 
     Other attempts exist with more complex models, but this is simple enough to demonstrate the basic idea for now
     - 7/18 - BM
+    Current iteration only works with small classroom room type
+    - 7/20 - BM
 
-    Input:
-    c_instance = BaseClass instance
-    
     v_d_arguments = {
     :param floor_area:          Ar          Area of the room
     :param height:              H           Height of the room
@@ -439,51 +367,46 @@ def make_velocity_distance(c_instance, v_d_arguments):
         2.1. for each initial infected student, emit and disperse viral quanta proportionally to the timestep length
         2.2. disperse the quanta in various directions according 
 
-    :viral quanta emission rate:
-    :viral infectiousness by mass:
-
-
-    :return direction: 
-    :return velocity:
-
-
-
-
-    old params:
-    window1, window2, door_location, vent_location, window_size, vent_size
+    :return direction:          Distance matrix for concentration fluid dynamics sim
+    :return velocity:           Velocity matrix for concentration fluid dynamics sim
     '''
-
+    window_location = v_d_arguments['window_locations']
+    window_size = v_d_arguments['window_size']
+    vent_location = v_d_arguments['vent_locations']
+    vent_size = v_d_arguments['vent_size']
+    # door_location = v_d_arguments['door_locations']
+    # door_size = v_d_arguments['door_size']
 
     # function describes: y such that slope(x) = y
     temp = [[0 for col in range(100)] for row in range(100)] # size of room in 10 cm blocks
     x1 =  range(100)
     # up left
     line1_ =  [(i**2 / 100) for i in x1]
-    ytemp = 100 - line1_[int(vent_location[0]- vent_size/2)]
+    ytemp = 100 - line1_[int(vent_location[0][0] - vent_size/2)]
     y1 = [i + ytemp for i in line1_]
     # These lines can be edited based on # of vents ##############################
     # left
-    w1left = window1[0] - window_size/2
-    w1right = window1[0] + window_size/2
-    v1left = vent_location[0] - vent_size / 2
-    v1right = vent_location[0] + vent_size / 2
-    x2 = [w1left, v1left]
-    y2 = [0, 100]
+    w1left = window_location[0][0] - window_size/2
+    w1right = window_location[0][1] + window_size/2
+    v1left = vent_location[0][0] - vent_size / 2
+    v1right = vent_location[0][1] + vent_size / 2
+    # x2 = [w1left, v1left]
+    # y2 = [0, 100]
     m2 = 100/(v1left-w1left)
     b2 = 0 - m2 * w1left
     # down left
-    x3 = [w1right, v1right]
-    y3 = [0, 100]
-    m3 = 100/(vent_location[0]-w1right)
+    # x3 = [w1right, v1right]
+    # y3 = [0, 100]
+    m3 = 100/(vent_location[0][0]-w1right)
     b3 = 0 - m3 * w1right
     # down
-    w2left = window2[0] - window_size/2
-    w2right = window2[0] + window_size/2
-    x4 = [w2left, v1right]
-    m4 = 100/(vent_location[0]-w2left)
+    w2left = window_location[1][0] - window_size/2
+    w2right = window_location[1][1] + window_size/2
+    # x4 = [w2left, v1right]
+    m4 = 100/(vent_location[0][0]-w2left)
     b4 = 0 - m4 * w2left
     # down right
-    x5 = [w2right, v1right]
+    # x5 = [w2right, v1right]
     m5 = 100/(v1right-w2right)
     b5 = 0 - m5 * w2right
     # right
@@ -491,19 +414,14 @@ def make_velocity_distance(c_instance, v_d_arguments):
     ytemp = 100 - line6_[int(v1right)]
     y6 = [i + ytemp for i in line6_]
     # between windows
-    center = (window2[0] + window1[0]) / 2
-    x7 = [i for i in range(100)]
+    center = (window_location[1][0] + window_location[0][0]) / 2
+    # x7 = [i for i in range(100)]
     curve_down = [-(((i-center) / 5)**2) + center/4 for i in range(100)]
-
-
-
-
-    #########################################
 
     # define direction plot
     for i in range(100):
         for j in range(100):
-            # VENT MATH TO MAKE SURE THIS DOESN'T MESS UP ###################### TODO: BUG WITH NEGATIVE SLOPES: WTF DO I DO
+            # VENT MATH TO MAKE SURE THIS DOESNT FAIL
             if j < curve_down[i]: # between windows
                 if i < center - 5:
                     temp[j][i] = 0
@@ -531,17 +449,15 @@ def make_velocity_distance(c_instance, v_d_arguments):
 
             # barriers
     direction = temp.copy() # get from temp var
-    #     r1 = mpl.patches.Rectangle((vent_location[0], 96), 10, 3, color='lightblue')
-
-    ######################################### redo this for arbitrary width
+    
     # velocity
     xtemp = range(100)
-    w1 = window1
-    w2 = window2
-    i1 = [((i - vent_location[0]) / 3) **2 + 75 for i in xtemp]
-    i2 = [((i - vent_location[0]) / 3) **2 + 50 for i in xtemp]
-    i3 = [((i - vent_location[0]) / 3) **2 + 25 for i in xtemp]
-    i4 = [((i - vent_location[0]) / 3) **2 for i in xtemp]
+    w1 = window_location[0]
+    w2 = window_location[1]
+    i1 = [((i - vent_location[0][0]) / 3) **2 + 75 for i in xtemp]
+    i2 = [((i - vent_location[0][0]) / 3) **2 + 50 for i in xtemp]
+    i3 = [((i - vent_location[0][0]) / 3) **2 + 25 for i in xtemp]
+    i4 = [((i - vent_location[0][0]) / 3) **2 for i in xtemp]
 
     i5 = [-(((i - w1[0])/3)**2) + 10 for i in xtemp]
     i6 = [-(((i - w1[0])/3)**2) + 15 for i in xtemp]
@@ -571,7 +487,6 @@ def make_velocity_distance(c_instance, v_d_arguments):
                 blah[j][i] = 2.6
             elif j < i12[i]:
                 blah[j][i] = 2
-
             elif j > i1[i]:
                 blah[j][i] = 5
             elif j > i2[i]:
@@ -586,7 +501,7 @@ def make_velocity_distance(c_instance, v_d_arguments):
 
     return direction, velocity # and other useful variables
 
-def classroom_simulation(sim_arguments, v_d_arguments, aerosol_arguments):
+def classroom_simulation(sim_arguments, v_d_arguments, wmr, base_srt):
     '''
     Primary Simulation Function
 
@@ -595,12 +510,14 @@ def classroom_simulation(sim_arguments, v_d_arguments, aerosol_arguments):
     :param n_students:          number of students in each sim
     :param n_initial:           number of initial infected students  
     :param n_adults:            number of adults in each sim
-    :param mask:                likelihood of student having mask
+    :param student_mask_percent:likelihood of student having mask
+    :param adult_mask_percent:  likelihood of adult having mask
     :param n_sims:              number of simulations with new initial students 
-    :param duration_mins_step:  time step in minutes
-    :param duration_steps_day:  number of steps in a day
-    :param duration_days_sim:   number of days to simulate      
-    :param seating_chart:       (x,y) locations for student seating
+    :param mins_per_class:  time step in minutes
+    :param classes_per_day:  number of steps in a day
+    :param days_per_simulation:   number of days to simulate      
+    :param seats:       (x,y) locations for student seating
+    :param floor_area:          (x,y) dimensions of room
     }
     v_d_arguments = {
     :param window_locations:    (x,y,z) of window locations
@@ -609,16 +526,9 @@ def classroom_simulation(sim_arguments, v_d_arguments, aerosol_arguments):
     :param vent_size:           surface area of vent
     :param door_locations:      (x,y,z) of door locations
     :param door_size:           surface area of door
+    :param air_exchange_rate:                 outdoor ACH
     }
-    :method as follows:
-    # loop through n simulations ->
-    # d days in each simulation ->
-    # s steps in each day ->
-    # i infectious students -> 
-    # u uninfected students ->
-    # tranmission_rate_by_step_for_student_pair
-
-    --> mean number of infections
+    :param aerosol_t_hourly:    Aerosol Transmission rate by hour (Bazant)
 
     # output needed: 
     1. input params (user + default + calculated)
@@ -638,102 +548,182 @@ def classroom_simulation(sim_arguments, v_d_arguments, aerosol_arguments):
     :return t_avg_by_day:           array of average infection rate of all students by day
     :return t_avg_by_sim:           array of average infection rate of all students by sim
     '''
-    # intake variables
-
-
-
-
     # initialize variables
-    temp = generate_infectivity_curves()
-    infectiousness_curves = plot_infectivity_curves(temp, plot=False)
-    student_array = [BaseStudent(student_id = i, initial = False) for i in range(n_students)]
+    inf_params = generate_infectivity_curves()
+    infectiousness_curves = plot_infectivity_curves(inf_params, plot=False)
+    print(infectiousness_curves)
+    l_shape, l_loc, l_scale = inf_params['s_l_s_symptom_countdown']
 
-    # init seating chart 
+    student_array = [BaseStudent(id = i, initial = False) for i in range(0, sim_arguments['n_students'])]
+    # loop through students and assign seating!!
+    for student in student_array:
+        student.x = sim_arguments['seats'][student.id][0]
+        student.y = sim_arguments['seats'][student.id][1]
+        # print(student.id, student.x, student.y)
 
-
-    student_loc = {}
-    # init students
-    for i in range(n_students):
-        # generate BaseStudent instance with 'initial' set to False
-        student_array.add(BaseStudent(student_id=i, initial=False)
-        student_loc[i] = {'x': student_temp.x, 'y': student_temp.y, 'z': student_temp.z}
-        student_dict[i] = student_temp 
-
-    ################## not working rn #########################3
-    for initial_ in range(n_initial):
-        np.random.choice(list(student_dict.keys()), p=list(student_dict.values()).count(True) / sim_arguments[n_students])
-
-    class_instance = BaseClassroom() # store class_instance.distance and .velocity
-    # update class_instance with user input
+    student_loc_dict = {str(i): (student_array[i].x, student_array[i].y) for i in range(len(student_array))}
+   
+    # class_instance = BaseClassroom() # store class_instance.distance and .velocity
+    # # update class_instance with user input
 
     # make the below into a parameter of BaseClassroom?
-    direction, velocity = make_velocity_distance(class_instance, v_d_arguments)
-
-    # make the below into a parameter of BaseClassroom?
-    aerosol = return_aerosol_transmission_rate(aerosol_arguments) 
+    direction, velocity = make_velocity_distance(v_d_arguments)
 
     # conc_dist vars = concentration_array, vent_arr, min_arr, normed_arr
-    airflow_proxy = concentration_distribution_(aerosol_params['air_exchange_rate'], direction, velocity, student_dict)
 
     
+    # step_t_sum_rate = crt_step + srt_step + lrt_step
+
+
+   
+    simnum = []
+    daynum = []
+    stepnum = []
+    minnum = []
+    infected_id_list = []
+    other_id_list = []
+    close_range_transmission = []
+    shared_room_transmission = []
+    long_range_transmission = []
+    transmission_by_minute = []
+    transmission_by_hour = []
+    cause_of_infection = []
+    infection_occurs = []
+
 
 
     run_average_array = []
+    print('Sims start')
     # loop through n simulations ->
-    for sim in range(class_arguments[n_sims]):
-        if sim == int(n_sims / 4):
+    for sim in range(sim_arguments['n_sims']):
+        if sim == int(sim_arguments['n_sims'] / 4):
             print('25\% complete ...')
-        elif sim == int(n_sims / 2):
+        elif sim == int(sim_arguments['n_sims'] / 2):
             print('50\% complete ...')
-        elif sim == 3 * int(n_sims / 4):
+        elif sim == 3 * int(sim_arguments['n_sims'] / 4):
             print('75\% complete ...')
-        elif sim == int(n_sims - 1):
+        elif sim == int(sim_arguments['n_sims'] - 1):
             print('99\% complete ...')
         #########################
+        init_inf_ids = []
+        inf_loc = {}
+
+        initial_ids = np.random.choice(sim_arguments['n_students'], sim_arguments['n_initial'], replace=False)
+
+        # loop through initial infected
+        for i in initial_ids:
+            # choose random student to be initially infected
+            # initialize infectivity curve
+            student_array[i].time_to_symptoms = int(np.round(stats.lognorm.rvs(l_shape, l_loc, l_scale, size=1)[0], 0))
+            # fix overflow errors (unlikely but just in case)
+            if student_array[i].time_to_symptoms >= 18:
+                student_array[i].time_to_symptoms = 17
+                print('overflow up')
+            elif student_array[i].time_to_symptoms <= 0:
+                student_array[i].time_to_symptoms = 0
+                print('overflow down')
+            # initialize infectivity of student
+            # init_time_to_symp[str(i)] = student_array[i].infectivity.time_to_symptoms
+            student_array[i].infectivity = infectiousness_curves.iloc[student_array[i].time_to_symptoms].gamma
+            student_array[i].is_infected = True
+            init_inf_ids.append(student_array[i].id)
+            inf_loc[str(student_array[i].id)] = (student_array[i].x, student_array[i].y)
+            # init_infectivity[str(i)] = student_array
+            # infectiousness_curves[student_array[i].infectivity.time_to_symptoms].gamma
+            # student_array[i].is_infected = True
+            # print(student_array[initial_].id, student_array[initial_].is_infected, temp_inf)
+        
 
 
+        # airflow proxy
+        if wmr == False:
+            temp_conc, vent_conc, min_conc, norm_conc = concentration_distribution_(v_d_arguments['air_exchange_rate'], direction, velocity, sim_arguments['seats'], init_dict=inf_loc)
+            airflow_proxy = norm_conc
+        else:
+            airflow_proxy = 0
 
-        # initialize student by random selection# initial
-        initial_inf_id = np.random.choice(list(who_infected_class.keys()))
-        init_inf_dict[initial_inf_id] += 1
-
-        for init_ in range(n_initial):
-            # replace 
-
-        # initialize time until symptoms based on curve
-        init_time_to_symp = int(np.round(stats.lognorm.rvs(l_shape, l_loc, l_scale, size=1)[0], 0))
-        # fix overflow errors (unlikely but just in case)
-        if init_time_to_symp >= 18:
-            init_time_to_symp = 17
-        if init_time_to_symp <= 0:
-            init_time_to_symp = 0
-        # initialize infectivity of student
-        init_infectivity = inf_df.iloc[init_time_to_symp].gamma
-
-        temp_average_array = temp_rates.copy()
-        # print(temp_average_array)
-
-        run_chance_of_0 = 1
-
-        ######################
-
+        run_chance_zero = 1 # setup for chance nonzero
         # d days in each simulation ->
-        for day in range(class_arguments[n_days]):
-            # s steps in each day ->
-            for step in range(class_arguments[n_steps]):
-                # i infectious students -> 
-                for initial_s in range(class_arguments[n_initial]):
-                    # u uninfected students ->
-                    # if initial is infectious: calculate pairwise transmission at this step
+        for day in range(sim_arguments['days_per_simulation']):
+            # update infectivity
+            for student in student_array:
+                # print(student.id, student.is_infected, student.time_to_symptoms)
+                if student.is_infected == True and student.infectivity != 0:
+                    # update infectivity based on curve
+                    student.time_to_symptoms += day 
+                    if student.time_to_symptoms >= 18:
+                        student.time_to_symptoms = 17
+                        print('overflow above')
+                    student.infectivity = infectiousness_curves.iloc[student.time_to_symptoms].gamma
+                    print('update infection')
+                elif student.is_infected:
+                    student.time_to_symptoms = int(np.round(stats.lognorm.rvs(l_shape, l_loc, l_scale, size=1)[0], 0))
+                    student.infectivity = infectiousness_curves.iloc[student.time_to_symptoms].gamma
+                    print('new infection!')
+                else:
+                    pass               
+            # loop through steps (class periods)
+            for step in range(sim_arguments['classes_per_day']):
+                # loop through minutes per class
+                for min in range(sim_arguments['mins_per_class']):
+                    # loop through infectious students
+                    for student_i in student_array:
+                        if student_i.is_infected == False:
+                            pass
+                        elif student_i.infectious == True:
+                            for student_o in student_array:
+                                if student_o.is_infected == True:
+                                    pass
+                                else:
+                                    raw_dist = math.sqrt( ((student_o.y - student_i.y)**2) + ((student_o.x - student_i.x)**2) )
+                                    distance = (raw_dist / 100) * math.sqrt(sim_arguments['floor_area'])
+                                    # generate Bool for transmission and string for cause of infection    
+                                    new_infection, cause, t_rates = minute_transmission(student_o.id, student_i.id, base_srt, airflow_proxy=airflow_proxy, wmr=wmr, seats=student_loc_dict, mask_var=sim_arguments['student_mask_percent'], floor_area=sim_arguments['floor_area'], initial_infect=student_i.infectivity, distance=distance)
+                                    simnum.append(sim)
+                                    daynum.append(day)
+                                    stepnum.append(step)
+                                    minnum.append(min)
+                                    infected_id_list.append(student_i.id)
+                                    other_id_list.append(student_o.id)
+                                    close_range_transmission.append(t_rates['crt_minute'])
+                                    shared_room_transmission.append(t_rates['srt_minute'])
+                                    long_range_transmission.append(t_rates['lrt_minute'])
+                                    transmission_by_minute.append(t_rates['t_rate_by_minute'])
+                                    transmission_by_hour.append(t_rates['t_rate_by_hour'])
+                                    cause_of_infection.append(cause)
+                                    infection_occurs.append(new_infection)
+                                    if new_infection == True:
+                                        student_o.is_infected = True
+                        else:
+                            infectious_ = np.random.choice([True, False], p=[student_i.infectivity, 1 - student_i.infectivity])
+                            if infectious_ == True: 
+                                student_i.infectious = True
+                            else:
+                                pass
+                    # end of each step
+            # iterate infectivity of each infected student
 
-
-                    # number of infections 
-                    pass
-                
+            # end of each day
+        
+        # end of each simulation
         print('100\% complete! Plotting output ...')
-
+    t_rate_dict = {
+        'Simulation #': simnum,
+        'Day #': daynum,
+        'Step #': stepnum,
+        'Minute #': minnum,
+        'Infected ID': infected_id_list,
+        'Other ID': other_id_list,
+        'Close Range Transmission': close_range_transmission,
+        'Shared Room Transmission': shared_room_transmission,
+        'Long Range Transmission': long_range_transmission,
+        'Transmission by Minute': transmission_by_minute,
+        'Transmission by Hour': transmission_by_hour,
+        'Cause of Infection': cause_of_infection,
+        'Infection Occurs': infection_occurs
+    }
     # output:
-    all_parameters = {
+    param_output = {
         'user_params': {
             'room': {
 
@@ -758,6 +748,7 @@ def classroom_simulation(sim_arguments, v_d_arguments, aerosol_arguments):
             'infectivity': 'temp'
         }
     }
+    output_df = pd.DataFrame.from_dict(t_rate_dict)
 
     # # output needed: 
     # 1. input params (user + default + calculated)
@@ -769,3 +760,4 @@ def classroom_simulation(sim_arguments, v_d_arguments, aerosol_arguments):
     # 6. scatter of transmission methods: infection rate vs distance
     # 7. scatter of transmission methods: infection rate vs time
     # 8. scatter of transmission methods: distance vs time with % thresholds for orders of magnitude
+    return param_output, output_df

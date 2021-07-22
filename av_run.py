@@ -1,10 +1,6 @@
 # imports
 import argparse
-import sys
-if 'src' not in sys.path:
-    sys.path.insert(0, 'src')
 from av import *
-import json
 
 def main(args):
     '''
@@ -24,113 +20,34 @@ def main(args):
     # c. baseline vs other vent and window options
 
     3. call user_viz.model_run()
+
+    :method as follows:
+    # loop through n simulations ->
+    # d days in each simulation ->
+    # s steps in each day ->
+    # i infectious students -> 
+    # u uninfected students ->
+    # tranmission_rate_by_step_for_student_pair
+    --> mean number of infections
+
     '''
+    targets = vars(args)
 
     # 1. load user input using argparse
-    print('args are:')
-    print(args)
+    # print('args are:')
+    # for key, value in targets.items():
+    #     print(key, ':', value)
 
     # 3. generate model instance
-    user_viz = user_viz(args)
+    model_instance = user_viz(targets=targets)
+    print('model instance generated')
 
     # 4. run model
-    user_viz.model_run()
+    model_instance.model_run()
 
-
-
-
-
-
-
-
-
-
-
-
-    # with open('config/default.json') as f:
-    #     default_data = json.load(f)
-    # with open('config/aerosol.json') as g:
-    #     aerosol_data = json.load(g)
-
-
-
-    
-
-    # floor_area = max(aerosol_data['floor_area'], 1000) # THIS IS DEFAULT WHAT SHOULD THE ROOM SIZE BE
-    # room_type = args.room_type # string
-    # duration = args.duration # in minutes
-    # number_of_students = args.num_students # total occupancy
-    # mask = args.mask_wearing # in %
-    # windows = args.windows # string : see below
-    # indoors = args.indoors # 1 if yes, 0 if no
-    # vent_loc = args.vent_locations # list of tuples
-    # window_loc = args.window_locations # list of xy tuples
-    # num_sims_ = 100 # default
-    # mask_eff_ = .1 # default
-    # air_exchange_rate = aerosol_data['air_exchange_rate']
-
-   
-
-
-
-
-
-    # ########## MAKE THE BELOW INTO USER INPUTS
-
-
-    # # update aerosol to results
-    # aerosol_data["floor_area"] = floor_area
-    # aerosol_data["mask_passage_prob"] = mask_eff_
-    # aerosol_data["mean_ceiling_height"] = 6.07
-    # aerosol_data["air_exchange_rate"] = air_exchange_rate
-    # aerosol_data["primary_outdoor_air_fraction"] = 0.2
-    # aerosol_data["aerosol_filtration_eff"] = 0
-    # aerosol_data["relative_humidity"] = 0.69
-    # aerosol_data["breathing_flow_rate"] = 0.5
-    # aerosol_data["max_aerosol_radius"] = 2
-    # aerosol_data["exhaled_air_inf"] = 0
-    # aerosol_data["max_viral_deact_rate"] = 0.3
-
-    # # update default to results
-    # default_data["class_length"] = int(duration)
-    # default_data["duration"] = int(duration)
-    # default_data["number_students"] = int(number_of_students)
-    # default_data["mask_var"] = int(mask)
-    # default_data["window_var"] = windows
-    # default_data["number_simulations"] = int(num_sims_)
-    # aerosol_data["room_type"] = room_type
-    # aerosol_data["room_size"] = floor_area
-    # # default_data["seating_choice"] = seating_
-
-    # with open('results/default_data_.json', 'w') as f:
-    #     json.dump(default_data, f)
-    # with open('results/aerosol_data_.json', 'w') as g:
-    #     json.dump(aerosol_data, g)
-    # print('json loading done')
-
-
-
-    # model_run_args = []
-
-
-    av_out = user_viz(targets = args)
-    
     print('Simulation complete! Please check /output folder for output.')
 
     return
-
-
-
-# def main_2(args_):
-#     '''
-#     Run functions with new json inputs
-#     '''
-
-#     av_out = user_viz()
-
-#     av_out.model_run(args_)
-
-#     return
 
 if __name__ == '__main__':
     '''
@@ -178,52 +95,54 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     # Simulation Arguments
-    # setup
     parser.add_argument('-r', '--room_type', type=str, default='small', help='Room Type: large or small')
     parser.add_argument('-ns', '--num_students', type=int, default=25, help='Number of Students in Class')
+    parser.add_argument('-ni', '--num_initial', type=int, default=1, help='Number of Initial Infected')
     parser.add_argument('-na', '--num_adults', type=int, default=1, help='Number of Adults in Class')
-    parser.add_argument('-a', '--age_group', type=str, default='<15 years', help='Age Group of students in simulation')
-    # duration
-    parser.add_argument('-mpc', '--mins_per_class', type=int, default=60, help='Number of minutes per class')
-    parser.add_argument('-cpd', '--classes_per_day', type=int, default=3, help='Number of classes per day')
-    parser.add_argument('-dps', '--days_per_simulation', type=int, default=5, help='Number of days per simulation')
-    parser.add_argument('-wmr', '--well_mixed_room', type=bool, default=False, help='True: Use Wells-Riley Well-Mixed Room Model; False: Include airflow proxy')
-
+    # make this 100
+    parser.add_argument('-n', '--n_sims', type=int, default=1, help='Duration of Simulation')
+    parser.add_argument('-a', '--age_group',            type=str, default='<15 years', help='Age Group of students in simulation')
+    parser.add_argument('-mpc', '--mins_per_class',     type=int, default=60, help='Number of minutes per class')
+    parser.add_argument('-cpd', '--classes_per_day',    type=int, default=3, help='Number of classes per day')
+    parser.add_argument('-dps', '--days_per_simulation',type=int, default=5, help='Number of days per simulation')
+    parser.add_argument('-wmr', '--well_mixed_room',    type=bool, default=False, help='True: Use Wells-Riley Well-Mixed Room Model; False: Include airflow proxy')
+    parser.add_argument('-v', '--ventilation',          type=str, default='Open Windows', help='Ventilation Options; Closed Windows, Open Windows, Mechanical, Open Windows and Fans, Better Mechanical, Outdoors')
 
     # Human Arguments
-    parser.add_argument('-qb', '--breathing_rate', type=int, default=0.29, help='Breathing Rate') 
-    parser.add_argument('-ra', '--respiratory_activity', type=str, default='speaking', help='Respiratory Activity')
-    parser.add_argument('-sm', '--student_mask_percent', type=int, default=100, help='Student mask wearing %')
-    parser.add_argument('-am', '--adult_mask_percent', type=int, default=100, help='Adult mask wearing %')
-    parser.add_argument('-pm', '--mask_protection_rate', type=int, default=.1, help='Mask Protection %')
+    parser.add_argument('-qb', '--breathing_rate',      type=float, default=0.29, help='Breathing Rate') 
+    parser.add_argument('-ra', '--respiratory_activity',type=str, default='speaking', help='Respiratory Activity')
+    parser.add_argument('-sm', '--student_mask_percent',type=int, default=100, help='Student mask wearing %')
+    parser.add_argument('-am', '--adult_mask_percent',  type=int, default=100, help='Adult mask wearing %')
+    parser.add_argument('-pm', '--mask_protection_rate',type=float, default=.1, help='Mask Protection %')
 
     # Room Arguments
-    parser.add_argument('-fa', '--floor_area', type=int, default=1000, help='Floor Area') #  area in ft^2
-    parser.add_argument('-rh', '--room_height', type=int, default=12.0, help='Height') # height in feet
-    parser.add_argument('-vl', '--vent_locations', type=tuple, help='optional vent location specifics') # x, y location
-    parser.add_argument('-vs', '--vent_size', type=int, default=10, help='Size of the room')
-    parser.add_argument('-wl', '--window_locations', type=tuple, help='optional window location specifics') # x, y location
-    parser.add_argument('-ws', '--window_size', type=int, default=10, help='Size of the room')
-    parser.add_argument('-dl', '--door_locations', type=tuple, help='optional door location specifics') # x, y location
-    parser.add_argument('-ds', '--door_size', type=int, default=10, help='Surface area of doors')
-    parser.add_argument('-sc', '--seating_chart', type=str, default='grid', help='Seating Chart')
+    parser.add_argument('-fa', '--floor_area',      type=int, default=900, help='Floor Area') #  area in ft^2
+    parser.add_argument('-rh', '--room_height',     type=int, default=12.0, help='Height') # height in feet
+    parser.add_argument('-vl', '--vent_locations',  type=list, default=[(50, 0)], help='optional vent location specifics') # x, y location
+    parser.add_argument('-vs', '--vent_size',       type=int, default=10, help='Surface Area of the vents')
+    parser.add_argument('-wl', '--window_locations', type=list, default=[(25, 0), (75, 0)], help='optional window location specifics') # x, y location
+    parser.add_argument('-ws', '--window_size',     type=int, default=20, help='Surface area of the windows')
+    parser.add_argument('-dl', '--door_locations',  type=list, default=[(20, 99)], help='optional door location specifics') # x, y location
+    parser.add_argument('-ds', '--door_size',       type=int, default=80, help='Surface area of doors')
+    parser.add_argument('-sc', '--seating_chart',   type=str, default='grid', help='Seating Chart')
 
     # Vent Arguments
-    parser.add_argument('-ach', '--ach_level', type=int, default=0, help='ACH level')
-    parser.add_argument('-mr', '--merv_level', type=int, default=0, help='MERV level')
-    parser.add_argument('-qr', '--recirc_rate', type=int, default=0, help='Recirculation Rate')
-    parser.add_argument('-h', '--relative_humidity', type=int, default=0, help='Relative Humidity')
-
+    parser.add_argument('-ach', '--ach_level',      type=int, default=0, help='ACH level')
+    parser.add_argument('-mr', '--merv_level',      type=int, default=0, help='MERV level')
+    parser.add_argument('-qr', '--recirc_rate',     type=float, default=1, help='Recirculation Rate')
+    parser.add_argument('-hum', '--relative_humidity',type=float, default=0.69, help='Relative Humidity')
+    parser.add_argument('-paf', '--primary_outdoor_air_fraction', type=float, default=0.75, help='Zp Outdoor air fraction')
 
     # Advanced Arguments
-    
-    parser.add_argument('-st', '--strain', type=str, default='B.1.427/429 (California)', help='Strain')
-    parser.add_argument('-cdr', '--crit_droplet_radius', type=int, default=2, help='cutoff radius for more infectious particles: currently 2 microns')
-    parser.add_argument('-vdr', '--viral_deact_rate', type=int, default=0, help='Viral Deactivation Rate')
-    parser.add_argument('-i', '--immunity_rate', type=int, default=0, help='Vaccinated/Immune')
-    parser.add_argument('-cvr', '--child_vax_rate', type=int, default=0, help='Child Vaccination Rate')
-    parser.add_argument('-avr', '--adult_vax_rate', type=int, default=100, help='Adult Vaccination Rate')
+    parser.add_argument('-st', '--strain',              type=str, default='B.1.427/429 (California)', help='Strain')
+    parser.add_argument('-cdr', '--crit_droplet_radius',type=int, default=2, help='cutoff radius for more infectious particles: currently 2 microns')
+    parser.add_argument('-vdr', '--viral_deact_rate',   type=float, default=0.3, help='Viral Deactivation Rate')
+    parser.add_argument('-i', '--immunity_rate',        type=float, default=0, help='Vaccinated/Immune')
+    parser.add_argument('-cvr', '--child_vax_rate',     type=float, default=0, help='Child Vaccination Rate')
+    parser.add_argument('-avr', '--adult_vax_rate',     type=float, default=100, help='Adult Vaccination Rate')
+    parser.add_argument('-vi', '--viral_infectivity',   type=float, default=30, help='Relation between mass of Virions and infection rate')
+    parser.add_argument('-af', '--aerosol_filtration_eff', type=float, default=0.0, help='Aerosol filtration efficiency')
 
     args = parser.parse_args()
-
+    print('arguments received')
     main(args)
