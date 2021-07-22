@@ -100,7 +100,7 @@ if __name__ == '__main__':
     parser.add_argument('-ni', '--num_initial', type=int, default=1, help='Number of Initial Infected')
     parser.add_argument('-na', '--num_adults', type=int, default=1, help='Number of Adults in Class')
     # make this 100
-    parser.add_argument('-n', '--n_sims', type=int, default=1, help='Duration of Simulation')
+    parser.add_argument('-n', '--n_sims', type=int, default=100, help='Duration of Simulation')
     parser.add_argument('-a', '--age_group',            type=str, default='<15 years', help='Age Group of students in simulation')
     parser.add_argument('-mpc', '--mins_per_class',     type=int, default=60, help='Number of minutes per class')
     parser.add_argument('-cpd', '--classes_per_day',    type=int, default=3, help='Number of classes per day')

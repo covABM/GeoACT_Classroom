@@ -137,6 +137,8 @@ class user_viz():
             # TODO: add default value for this based MERV level
             self.aerosol_filtration_eff = 0.06 / self.merv_level # default value
 
+        self.output_filepath = "output/"
+
     def load_parameters(self, filepath):
         '''
         Loads seating from input directories
@@ -237,6 +239,7 @@ class user_viz():
         else:
             print('please enter valid seating')
             pass
+        print(seats)
         return seats
 
     # function to run model with user input
@@ -324,11 +327,22 @@ class user_viz():
         }
 
         # 2 USER SIMULATIONS
-        # output old: averaged_all_runs, concentration_array, out_matrix, run_avg_nonzero
         param_dict, output_df = classroom_simulation(sim_arguments, v_d_arguments, wmr=self.well_mixed_room, base_srt=self.baseline_srt)
-        print('output_df', output_df)
+        print('output df columns', output_df.columns)
+
+        output_df.to_csv(self.output_filepath + 'sim_data.csv', index=False)
+        # return param_dict, output_df
         # 3 DENSITY ESTIMATION OF /STEP TRANSMISSION RATE
 
+        # out of practice!!!!
+
+        plt.figure(figsize=(10, 10))
+        density_df = output_df.copy()
+        density_plot = density_df.groupby(['Day #', 'Step #', 'Minute #'])['Transmission by Minute'].mean()
+        plt.hist(density_plot)
+
+        density_filename = self.output_filepath + 'density_plot.png'
+        plt.savefig(density_filename, dpi=300)
 
 
         # 4 MASK HISTOGRAM
@@ -339,6 +353,8 @@ class user_viz():
         # infection rate vs distance
         # infections rate avg vs time
         # infection boundary of time vs distance
+
+        # range_test_plot = density_
 
         # 7 RISK VS TIME
 
@@ -399,8 +415,7 @@ class user_viz():
         # self.chance_nonzero = 0
         # self.conc_array = 0
 
-        # output_filepath = "output/class_simulation_" + str(self.students_var) + '_' + str(self.mask_var)+ '_' + str(self.number_simulations) + '_' + str(self.duration) + '_' + str(self.room_type) + '_' + str(self.window_var) # str(i) for i in [self.inputs]
-
+        
 
 
         # # 2 LOADING

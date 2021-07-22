@@ -551,7 +551,7 @@ def classroom_simulation(sim_arguments, v_d_arguments, wmr, base_srt):
     # initialize variables
     inf_params = generate_infectivity_curves()
     infectiousness_curves = plot_infectivity_curves(inf_params, plot=False)
-    print(infectiousness_curves)
+    # print(infectiousness_curves)
     l_shape, l_loc, l_scale = inf_params['s_l_s_symptom_countdown']
 
     student_array = [BaseStudent(id = i, initial = False) for i in range(0, sim_arguments['n_students'])]
@@ -589,10 +589,8 @@ def classroom_simulation(sim_arguments, v_d_arguments, wmr, base_srt):
     transmission_by_hour = []
     cause_of_infection = []
     infection_occurs = []
+    distance_between_students = []
 
-
-
-    run_average_array = []
     print('Sims start')
     # loop through n simulations ->
     for sim in range(sim_arguments['n_sims']):
@@ -617,7 +615,7 @@ def classroom_simulation(sim_arguments, v_d_arguments, wmr, base_srt):
             student_array[i].time_to_symptoms = int(np.round(stats.lognorm.rvs(l_shape, l_loc, l_scale, size=1)[0], 0))
             # fix overflow errors (unlikely but just in case)
             if student_array[i].time_to_symptoms >= 18:
-                student_array[i].time_to_symptoms = 17
+                student_array[i].time_to_symptoms = 13
                 print('overflow up')
             elif student_array[i].time_to_symptoms <= 0:
                 student_array[i].time_to_symptoms = 0
@@ -652,14 +650,14 @@ def classroom_simulation(sim_arguments, v_d_arguments, wmr, base_srt):
                     # update infectivity based on curve
                     student.time_to_symptoms += day 
                     if student.time_to_symptoms >= 18:
-                        student.time_to_symptoms = 17
+                        student.time_to_symptoms = 17 - (sim_arguments['days_per_simulation'] - day)
                         print('overflow above')
                     student.infectivity = infectiousness_curves.iloc[student.time_to_symptoms].gamma
-                    print('update infection')
+                    # print('update infection')
                 elif student.is_infected:
                     student.time_to_symptoms = int(np.round(stats.lognorm.rvs(l_shape, l_loc, l_scale, size=1)[0], 0))
                     student.infectivity = infectiousness_curves.iloc[student.time_to_symptoms].gamma
-                    print('new infection!')
+                    # print('new infection!')
                 else:
                     pass               
             # loop through steps (class periods)
@@ -677,6 +675,7 @@ def classroom_simulation(sim_arguments, v_d_arguments, wmr, base_srt):
                                 else:
                                     raw_dist = math.sqrt( ((student_o.y - student_i.y)**2) + ((student_o.x - student_i.x)**2) )
                                     distance = (raw_dist / 100) * math.sqrt(sim_arguments['floor_area'])
+                                    distance_between_students.append(distance)
                                     # generate Bool for transmission and string for cause of infection    
                                     new_infection, cause, t_rates = minute_transmission(student_o.id, student_i.id, base_srt, airflow_proxy=airflow_proxy, wmr=wmr, seats=student_loc_dict, mask_var=sim_arguments['student_mask_percent'], floor_area=sim_arguments['floor_area'], initial_infect=student_i.infectivity, distance=distance)
                                     simnum.append(sim)
@@ -694,19 +693,20 @@ def classroom_simulation(sim_arguments, v_d_arguments, wmr, base_srt):
                                     infection_occurs.append(new_infection)
                                     if new_infection == True:
                                         student_o.is_infected = True
+                                    
                         else:
                             infectious_ = np.random.choice([True, False], p=[student_i.infectivity, 1 - student_i.infectivity])
                             if infectious_ == True: 
                                 student_i.infectious = True
                             else:
                                 pass
-                    # end of each step
-            # iterate infectivity of each infected student
-
-            # end of each day
-        
-        # end of each simulation
-        print('100\% complete! Plotting output ...')
+            # end of each step
+            
+        # iterate infectivity of each infected student
+        # end of each day
+      
+    # end of each simulation
+    print('100\% complete! Plotting output ...')
     t_rate_dict = {
         'Simulation #': simnum,
         'Day #': daynum,
@@ -720,7 +720,8 @@ def classroom_simulation(sim_arguments, v_d_arguments, wmr, base_srt):
         'Transmission by Minute': transmission_by_minute,
         'Transmission by Hour': transmission_by_hour,
         'Cause of Infection': cause_of_infection,
-        'Infection Occurs': infection_occurs
+        'Infection Occurs': infection_occurs,
+        'Distance': distance_between_students
     }
     # output:
     param_output = {
