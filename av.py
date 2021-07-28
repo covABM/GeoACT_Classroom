@@ -347,6 +347,8 @@ class user_viz():
 
         # 4 MASK HISTOGRAM
 
+        # make the plots from the dataframe!!!!
+
         # 5 AIRFLOW HISTOGRAM
 
         # 6 SCATTER LRT vs SRT vs SRT

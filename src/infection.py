@@ -103,7 +103,6 @@ def return_aerosol_transmission_rate(asol_args):
 
     :return:
     '''
-
     floor_area = asol_args['floor_area']
     mean_ceiling_height = asol_args['room_height']
     air_exchange_rate = asol_args['air_exchange_rate']
