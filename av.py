@@ -351,7 +351,7 @@ class user_viz():
 
         # 5 AIRFLOW HISTOGRAM
 
-        # 6 SCATTER LRT vs SRT vs SRT
+        # 6 SCATTER LRT vs SRT vs CRT
         # infection rate vs distance
         # infections rate avg vs time
         # infection boundary of time vs distance
