@@ -29,19 +29,16 @@ def sample_initial(n_initial=3, plot=False):
     
     l_shape, l_loc, l_scale = s_l_s_symptom_countdown
     g_shape, g_loc, g_scale = s_l_s_infectivity_density
-    # countdown_curve = stats.lognorm(s=l_shape, loc=l_loc, scale=l_scale)
-    # infective_curve = stats.gamma.pdf(x_infectivity, a=g_shape, loc=g_loc, scale=g_scale)
+    countdown_curve = stats.lognorm(s=l_shape, loc=l_loc, scale=l_scale)
+    infective_curve = stats.gamma.pdf(x_infectivity, a=g_shape, loc=g_loc, scale=g_scale)
 
     # Generate 1 for each initial infected agent
     i_a_s = [int(np.round(i)) for i in stats.lognorm.rvs(l_shape, l_loc, l_scale, size=n_initial)]
     # density function: % chance of becoming infectious after showing symptoms
     # infectious_after_symp.append(i_a_s)
-    infective_df = pd.DataFrame({
-        'days_ias': np.linspace(-10, 8, 19), 
-        'gamma': i_a_s,
-        'days_sai': np.linspace(0, 17),
-        'lognorm': [int(np.round(j) for j in stats.gamma.pdf(n_initial, a=g_shape, loc=g_loc, scale=g_scale))],
-    })
+    
+    infective_df = pd.DataFrame({'x': list(x_infectivity), 'gamma': list(stats.gamma.pdf(x_infectivity, a=g_shape, loc=g_loc, scale=g_scale))})
+
 
     # Return N RANDOM NUMBERS HOW HARD IS THAT i'm so tired
 
@@ -72,7 +69,7 @@ def sample_initial(n_initial=3, plot=False):
 
 
     # return the sampled variables
-    return infective_df #serial_intervals, infectious_after_symp, symp_after_infected 
+    return x_symptom_countdown, countdown_curve, x_infectivity, infective_df#initial_i_a_s #serial_intervals, infectious_after_symp, symp_after_infected 
 
 
 
