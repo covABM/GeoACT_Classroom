@@ -103,3 +103,16 @@ def sample_initial(n_initial=3, plot=False):
 # asymp_slider.observe(on_value_change, names="value")
 # on_value_change(None)
 # input_rows = [num_init_slider, asymp_slider, init_sample_button]
+
+
+# a = wg.IntSlider(description='a')
+# b = wg.IntSlider(description='b')
+# c = wg.IntSlider(description='c')
+# def f(a, b, c):
+#     print('{}*{}*{}={}'.format(a, b, c, a*b*c))
+
+# out = wg.interactive_output(f, {'a': a, 'b': b, 'c': c})
+
+# # wg.HBox([wg.VBox([a, b, c]), out])
+# stack = wg.VBox([a, b, c, out])
+# stack
