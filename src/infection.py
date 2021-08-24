@@ -69,13 +69,7 @@ def plot_infectivity_curves(inf_params, plot=True):
         extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
         fig.savefig('Days_to_Symp.png', dpi=300)
 
-        ax2.plot(x_infectivity, infective_df.gamma)
-        ax2.set_title('Expected infectivity before symptoms appear')
-        ax2.set_xlabel('Number of days')
-        ax2.set_ylabel('Initial Infectivity')
-
-                # Save just the portion _inside_ the second  axis's boundaries
-        extent2 = ax2.get_window_extent().transformed(fig2.dpi_scale_trans.inverted())
+         
         # fig2.savefig('Infectivity_Dynamics.png', dpi=300)
 
         return infective_df
